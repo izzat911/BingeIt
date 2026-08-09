@@ -1,0 +1,17 @@
+﻿{
+  "name": "bingeit",
+  "version": "1.0.0",
+  "description": "AI-powered movie recommendation app",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "mysql2": "^3.11.0",
+    "bcryptjs": "^2.4.3",
+    "express-session": "^1.18.0"
+  }
+}

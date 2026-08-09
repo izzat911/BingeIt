@@ -1,0 +1,90 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BingeIt</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+    <link rel="stylesheet" href="../public/css/style.css">
+</head>
+<body>
+
+    <header>
+        <nav class="navbar">
+            <div class="logo">
+                <img src="../public/images/camera-svgrepo-com.svg.png" alt="BingeIt Logo">
+                <h2>Binge<span>It</span></h2>
+            </div>
+
+            <ul class="nav-links">
+                <li><a href="#">Home</a></li>
+                <li><a href="discover.html">Discover</a></li>
+                <li><a href="ai.html">AI</a></li>
+                <a href="login.html" class="login-btn" id="login-nav-btn">Login</a>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="hero">
+        <div class="hero-content">
+            <span class="badge">✨AI Powered Movie Discovery</span>
+
+            <h1>Find Your <span>Next Obsession</span></h1>
+
+            <p>Describe the kind of movie you're looking for, and let AI recommend the perfect watch based on your mood.</p>
+
+            <div class="search-box">
+                <input type="text" placeholder="Describe the movie you want to watch...">
+                <button>
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    Ask AI
+                </button>
+            </div>
+        </div>
+
+        <div class="hero-glow glow1"></div>
+        <div class="hero-glow glow2"></div>
+    </section>
+
+    <section class="trending">
+        <div class="section-title">
+            <h2>Trending Movies</h2>
+            <p>Discover what's popular around the world today.</p>
+        </div>
+
+        <div class="movies-grid" id="trending-grid">
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="footer-container">
+            <div class="footer-logo">
+                <img src="../public/images/camera-svgrepo-com.svg.png" alt="BingeIt Logo">
+                <h2>Binge<span>It</span></h2>
+
+                <p class="footer-tagline">Find your next obsession.</p>
+                <p class="footer-description">AI-powered movie recommendations tailored to your taste.</p>
+            </div>
+
+            <div class="footer-links">
+                <a href="#">Lightsoff.</a>
+                <a href="#">Popcorn ready.</a>
+                <a href="#">Let`s Bingeit.</a>
+            </div>
+
+            <div class="footer-divider"></div>
+
+            <div class="footer-bottom">
+                <p>Powered by AI. Inspired by Cinema.</p>
+                <span>&copy; 2026 BingeIt. All Rights Reserved.</span>
+            </div>
+        </div>
+    </footer>
+
+    <script src="../public/js/script.js"></script>
+    <script src="../public/js/trending.js"></script>
+    <script src="../public/js/nav-auth.js"></script>
+</body>
+</html>
