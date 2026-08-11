@@ -1,5 +1,7 @@
 ﻿const mysql = require("mysql2/promise");
 
+const useSSL = process.env.DB_SSL === "true";
+
 const pool = mysql.createPool({
     host: process.env.DB_HOST || "127.0.0.1",
     port: process.env.DB_PORT || 3306,
@@ -7,7 +9,8 @@ const pool = mysql.createPool({
     password: process.env.DB_PASSWORD || "",
     database: process.env.DB_NAME || "bingeit",
     waitForConnections: true,
-    connectionLimit: 10
+    connectionLimit: 10,
+    ssl: useSSL ? { rejectUnauthorized: false } : undefined
 });
 
 module.exports = pool;
