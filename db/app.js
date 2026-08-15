@@ -7,6 +7,7 @@ const MySQLStore = require("express-mysql-session")(session);
 const pool = require("./db/pool");
 
 const app = express();
+app.set('trust proxy', 1);
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const GROQ_MODEL = "llama-3.3-70b-versatile";
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
@@ -34,7 +35,7 @@ app.use(session({
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
-    cookie: { maxAge: 1000 * 60 * 60 * 24 * 7 }
+    cookie: { maxAge: 1000 * 60 * 60 * 24 * 7, secure: process.env.NODE_ENV === "production", sameSite: "lax" } 
 }));
 
 app.use("/public", express.static(path.join(__dirname, "public")));
