@@ -229,7 +229,7 @@ Recommend exactly 6 real movies that fit. Respond ONLY with a raw JSON object an
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                model: "openrouter/auto",
+                model: "qwen/qwen-2.5-7b-instruct:free",
                 messages: [
                     { role: "system", content: "You are a movie recommendation assistant. Always output valid JSON only." },
                     { role: "user", content: userPrompt }
@@ -239,9 +239,9 @@ Recommend exactly 6 real movies that fit. Respond ONLY with a raw JSON object an
         });
 
         if (!response.ok) {
-            const errorDetails = await response.text();
-            console.error("OpenRouter Error Details:", response.status, errorDetails);
-            return res.status(502).json({ error: `OpenRouter error: ${response.status}` });
+            const errText = await response.text();
+            console.error("OpenRouter Returned Error:", response.status, errText);
+            return res.status(502).json({ error: `OpenRouter error status ${response.status}: ${errText}` });
         }
 
         const data = await response.json();
@@ -251,8 +251,8 @@ Recommend exactly 6 real movies that fit. Respond ONLY with a raw JSON object an
         const jsonEnd = rawText.lastIndexOf("}");
 
         if (jsonStart === -1 || jsonEnd === -1) {
-            console.error("Invalid JSON string from AI:", rawText);
-            return res.status(502).json({ error: "AI response did not return valid JSON." });
+            console.error("Raw AI response missing JSON brackets:", rawText);
+            return res.status(502).json({ error: "AI response did not contain valid JSON." });
         }
 
         const cleaned = rawText.substring(jsonStart, jsonEnd + 1);
@@ -260,7 +260,7 @@ Recommend exactly 6 real movies that fit. Respond ONLY with a raw JSON object an
 
         res.json(parsed);
     } catch (err) {
-        console.error("Server exception in recommend route:", err);
-        res.status(500).json({ error: "Internal server error." });
+        console.error("Exception in recommend endpoint:", err);
+        res.status(500).json({ error: err.message || "Internal server error." });
     }
 });
