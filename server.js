@@ -211,27 +211,33 @@ A user wants movie recommendations.
 ${description ? `Their description: "${description}"` : ""}
 ${filterLines.length ? `Filters they selected:\n${filterLines.join("\n")}` : ""}
 
-Recommend exactly 6 real movies that fit. Respond ONLY with a raw JSON object and no surrounding text or formatting, in this exact shape:
+Recommend exactly 6 real movies that fit. Respond ONLY with a raw JSON object and no markdown formatting, using this exact structure:
 {
   "recommendations": [
-    { "title": "Movie Title", "year": "2010", "genre": "Sci-Fi", "reason": "One or two sentence reason this fits what they asked for." }
+    { "title": "Movie Title", "year": "2010", "genre": "Sci-Fi", "reason": "Short sentence on why this fits." }
   ]
 }
 `.trim();
 
     try {
         const completion = await openai.chat.completions.create({
-            model: "openrouter/auto",
-            messages: [{ role: "user", content: userPrompt }]
+            model: "meta-llama/llama-3.3-70b-instruct:free",
+            messages: [
+                { role: "system", content: "You are a movie recommendation assistant. Always output valid JSON only." },
+                { role: "user", content: userPrompt }
+            ],
+            temperature: 0.7
         });
 
         const rawText = completion.choices[0]?.message?.content || "";
-        
+        console.log("Raw OpenRouter AI Response:", rawText);
+
         const jsonStart = rawText.indexOf("{");
         const jsonEnd = rawText.lastIndexOf("}");
-        
+
         if (jsonStart === -1 || jsonEnd === -1) {
-            throw new Error("AI did not return a valid JSON structure.");
+            console.error("Failed to parse JSON. Raw AI output was:", rawText);
+            return res.status(502).json({ error: "AI response was not formatted correctly." });
         }
 
         const cleaned = rawText.substring(jsonStart, jsonEnd + 1);
@@ -239,12 +245,7 @@ Recommend exactly 6 real movies that fit. Respond ONLY with a raw JSON object an
 
         res.json(parsed);
     } catch (err) {
-        console.error("OpenRouter recommendation error details:", err.message || err);
-        res.status(502).json({ error: "Something went wrong generating recommendations." });
+        console.error("OpenRouter API Error Details:", err);
+        res.status(502).json({ error: "Something went wrong generating recommendations: " + (err.message || "API Error") });
     }
-});
-
-const PORT = process.env.PORT || 8080;
-app.listen(PORT, "0.0.0.0", () => {
-    console.log(`BingeIt server running on port ${PORT}`);
 });
