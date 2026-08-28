@@ -211,7 +211,7 @@ A user wants movie recommendations.
 ${description ? `Their description: "${description}"` : ""}
 ${filterLines.length ? `Filters they selected:\n${filterLines.join("\n")}` : ""}
 
-Recommend exactly 6 real movies that fit. Respond ONLY with a raw JSON object and no markdown formatting, in this exact shape:
+Recommend exactly 6 real movies that fit. Respond ONLY with a raw JSON object and no markdown formatting, using this exact structure:
 {
   "recommendations": [
     { "title": "Movie Title", "year": "2010", "genre": "Sci-Fi", "reason": "Short sentence on why this fits." }
@@ -225,11 +225,11 @@ Recommend exactly 6 real movies that fit. Respond ONLY with a raw JSON object an
             headers: {
                 "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
                 "HTTP-Referer": "https://valiant-gratitude-production.up.railway.app",
-                "X-Title": "BingeIt Movie Recommender",
+                "X-Title": "BingeIt",
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                model: "meta-llama/llama-3.3-70b-instruct:free",
+                model: "openrouter/auto",
                 messages: [
                     { role: "system", content: "You are a movie recommendation assistant. Always output valid JSON only." },
                     { role: "user", content: userPrompt }
@@ -239,21 +239,20 @@ Recommend exactly 6 real movies that fit. Respond ONLY with a raw JSON object an
         });
 
         if (!response.ok) {
-            const errBody = await response.text();
-            console.error("OpenRouter API Error Response:", response.status, errBody);
-            return res.status(502).json({ error: `OpenRouter returned status ${response.status}` });
+            const errorDetails = await response.text();
+            console.error("OpenRouter Error Details:", response.status, errorDetails);
+            return res.status(502).json({ error: `OpenRouter error: ${response.status}` });
         }
 
         const data = await response.json();
         const rawText = data.choices[0]?.message?.content || "";
-        console.log("Raw OpenRouter Response:", rawText);
 
         const jsonStart = rawText.indexOf("{");
         const jsonEnd = rawText.lastIndexOf("}");
 
         if (jsonStart === -1 || jsonEnd === -1) {
-            console.error("Failed to find valid JSON in output:", rawText);
-            return res.status(502).json({ error: "AI response did not contain valid JSON." });
+            console.error("Invalid JSON string from AI:", rawText);
+            return res.status(502).json({ error: "AI response did not return valid JSON." });
         }
 
         const cleaned = rawText.substring(jsonStart, jsonEnd + 1);
@@ -261,7 +260,7 @@ Recommend exactly 6 real movies that fit. Respond ONLY with a raw JSON object an
 
         res.json(parsed);
     } catch (err) {
-        console.error("Error in /api/recommend execution:", err);
-        res.status(500).json({ error: "Internal server error processing recommendation." });
+        console.error("Server exception in recommend route:", err);
+        res.status(500).json({ error: "Internal server error." });
     }
 });
