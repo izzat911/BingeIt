@@ -12,7 +12,7 @@ const Groq = require("groq-sdk");
 const groq = new Groq({ 
   apiKey: process.env.GROQ_API_KEY 
 });
-const GROQ_MODEL = "llama-3.1-8b-instant";
+const GROQ_MODEL = "openai/gpt-oss-20b";
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
 const SESSION_SECRET = process.env.SESSION_SECRET || "bingeit-dev-secret-change-this";
 
