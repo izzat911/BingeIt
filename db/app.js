@@ -9,7 +9,7 @@ const pool = require("./db/pool");
 const app = express();
 app.set('trust proxy', 1);
 const GROQ_API_KEY = process.env.GROQ_API_KEY;
-const GROQ_MODEL = "llama-3.3-70b-versatile";
+const GROQ_MODEL = "llama3-70b-8192";
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
 const SESSION_SECRET = process.env.SESSION_SECRET || "bingeit-dev-secret-change-this";
 
