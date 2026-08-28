@@ -4,18 +4,28 @@ const path = require("path");
 const bcrypt = require("bcryptjs");
 const session = require("express-session");
 const MySQLStore = require("express-mysql-session")(session);
-const pool = require("./db/pool");
+const pool = require("./pool");
+const OpenAI = require("openai");
 
-const Groq = require("groq-sdk");
-
-// Initialize the client explicitly with the key from process.env
-const groq = new Groq({ 
-  apiKey: process.env.GROQ_API_KEY 
-});
-const GROQ_MODEL = "openai/gpt-oss-20b";
+// Environment variables
+const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
 const SESSION_SECRET = process.env.SESSION_SECRET || "bingeit-dev-secret-change-this";
+const MODEL_NAME = "meta-llama/llama-3.3-70b-instruct:free";
 
+// OpenRouter Client Initialization
+const openai = new OpenAI({
+    baseURL: "https://openrouter.ai/api/v1",
+    apiKey: OPENROUTER_API_KEY,
+});
+
+const app = express();
+app.set("trust proxy", 1);
+
+// Middleware MUST come before routes
+app.use(express.json());
+
+// MySQL connection check
 pool.getConnection()
     .then(conn => {
         console.log("Connected to MySQL");
@@ -23,6 +33,7 @@ pool.getConnection()
     })
     .catch(err => console.error("MySQL connection error:", err.message));
 
+// Session Setup
 const sessionStore = new MySQLStore({
     host: process.env.DB_HOST || "127.0.0.1",
     port: process.env.DB_PORT || 3306,
@@ -32,7 +43,6 @@ const sessionStore = new MySQLStore({
     ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : undefined
 });
 
-app.use(express.json());
 app.use(session({
     secret: SESSION_SECRET,
     store: sessionStore,
@@ -43,6 +53,7 @@ app.use(session({
 
 app.use("/public", express.static(path.join(__dirname, "public")));
 
+// Auth Middlewares
 function requireAuthPage(req, res, next) {
     if (req.session.userId) return next();
     res.redirect("/login.html");
@@ -53,6 +64,7 @@ function requireAuthApi(req, res, next) {
     res.status(401).json({ error: "You must be logged in." });
 }
 
+// Static HTML Pages
 app.get(["/login.html", "/signup.html"], (req, res) => {
     res.sendFile(path.join(__dirname, "views", req.path));
 });
@@ -62,6 +74,7 @@ app.get(["/", "/index.html", "/discover.html", "/ai.html", "/details.html"], req
     res.sendFile(path.join(__dirname, "views", page));
 });
 
+// Auth Routes
 app.post("/api/signup", async (req, res) => {
     const { name, email, password } = req.body;
 
@@ -73,22 +86,15 @@ app.post("/api/signup", async (req, res) => {
     }
 
     try {
-        const [existing] = await pool.query(
-            "SELECT id FROM users WHERE email = ?",
-            [email.toLowerCase()]
-        );
+        const [existing] = await pool.query("SELECT id FROM users WHERE email = ?", [email.toLowerCase()]);
         if (existing.length > 0) {
             return res.status(409).json({ error: "An account with this email already exists." });
         }
 
         const hashedPassword = await bcrypt.hash(password, 10);
-        await pool.query(
-            "INSERT INTO users (name, email, password) VALUES (?, ?, ?)",
-            [name, email.toLowerCase(), hashedPassword]
-        );
+        await pool.query("INSERT INTO users (name, email, password) VALUES (?, ?, ?)", [name, email.toLowerCase(), hashedPassword]);
 
         res.status(201).json({ message: "Account created successfully." });
-
     } catch (err) {
         console.error("Signup error:", err);
         res.status(500).json({ error: "Something went wrong creating your account." });
@@ -103,18 +109,10 @@ app.post("/api/login", async (req, res) => {
     }
 
     try {
-        const [rows] = await pool.query(
-            "SELECT * FROM users WHERE email = ?",
-            [email.toLowerCase()]
-        );
+        const [rows] = await pool.query("SELECT * FROM users WHERE email = ?", [email.toLowerCase()]);
         const user = rows[0];
 
-        if (!user) {
-            return res.status(401).json({ error: "Invalid email or password." });
-        }
-
-        const passwordMatches = await bcrypt.compare(password, user.password);
-        if (!passwordMatches) {
+        if (!user || !(await bcrypt.compare(password, user.password))) {
             return res.status(401).json({ error: "Invalid email or password." });
         }
 
@@ -122,7 +120,6 @@ app.post("/api/login", async (req, res) => {
         req.session.userName = user.name;
 
         res.json({ message: "Logged in successfully.", name: user.name });
-
     } catch (err) {
         console.error("Login error:", err);
         res.status(500).json({ error: "Something went wrong logging in." });
@@ -130,9 +127,7 @@ app.post("/api/login", async (req, res) => {
 });
 
 app.post("/api/logout", (req, res) => {
-    req.session.destroy(() => {
-        res.json({ message: "Logged out." });
-    });
+    req.session.destroy(() => res.json({ message: "Logged out." }));
 });
 
 app.get("/api/me", (req, res) => {
@@ -143,32 +138,23 @@ app.get("/api/me", (req, res) => {
     }
 });
 
+// TMDB Movie Routes
 app.get("/api/discover", requireAuthApi, async (req, res) => {
     const { query, genre, page } = req.query;
     const pageNum = page || 1;
 
     if (!TMDB_API_KEY) {
-        console.error("Missing TMDB_API_KEY in .env");
         return res.status(500).json({ error: "Server is missing a TMDB_API_KEY." });
     }
 
     try {
-        let url;
-
-        if (query) {
-            url = `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&page=${pageNum}`;
-        } else {
-            url = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc&page=${pageNum}`;
-            if (genre) url += `&with_genres=${genre}`;
-        }
+        let url = query
+            ? `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}&page=${pageNum}`
+            : `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc&page=${pageNum}`;
+        if (!query && genre) url += `&with_genres=${genre}`;
 
         const response = await fetch(url);
-
-        if (!response.ok) {
-            const errText = await response.text();
-            console.error("TMDB API error:", errText);
-            return res.status(502).json({ error: "Movie database returned an error." });
-        }
+        if (!response.ok) return res.status(502).json({ error: "Movie database returned an error." });
 
         const data = await response.json();
         res.json({
@@ -176,7 +162,6 @@ app.get("/api/discover", requireAuthApi, async (req, res) => {
             page: data.page || 1,
             totalPages: data.total_pages || 1
         });
-
     } catch (err) {
         console.error("Discover route error:", err);
         res.status(500).json({ error: "Something went wrong loading movies." });
@@ -184,24 +169,14 @@ app.get("/api/discover", requireAuthApi, async (req, res) => {
 });
 
 app.get("/api/trending", requireAuthApi, async (req, res) => {
-    if (!TMDB_API_KEY) {
-        console.error("Missing TMDB_API_KEY in .env");
-        return res.status(500).json({ error: "Server is missing a TMDB_API_KEY." });
-    }
+    if (!TMDB_API_KEY) return res.status(500).json({ error: "Server is missing a TMDB_API_KEY." });
 
     try {
-        const url = `https://api.themoviedb.org/3/trending/movie/week?api_key=${TMDB_API_KEY}`;
-        const response = await fetch(url);
-
-        if (!response.ok) {
-            const errText = await response.text();
-            console.error("TMDB trending error:", errText);
-            return res.status(502).json({ error: "Movie database returned an error." });
-        }
+        const response = await fetch(`https://api.themoviedb.org/3/trending/movie/week?api_key=${TMDB_API_KEY}`);
+        if (!response.ok) return res.status(502).json({ error: "Movie database returned an error." });
 
         const data = await response.json();
         res.json({ movies: (data.results || []).slice(0, 12) });
-
     } catch (err) {
         console.error("Trending route error:", err);
         res.status(500).json({ error: "Something went wrong loading trending movies." });
@@ -210,39 +185,27 @@ app.get("/api/trending", requireAuthApi, async (req, res) => {
 
 app.get("/api/movie/:id", requireAuthApi, async (req, res) => {
     const { id } = req.params;
-
-    if (!TMDB_API_KEY) {
-        console.error("Missing TMDB_API_KEY in .env");
-        return res.status(500).json({ error: "Server is missing a TMDB_API_KEY." });
-    }
+    if (!TMDB_API_KEY) return res.status(500).json({ error: "Server is missing a TMDB_API_KEY." });
 
     try {
-        const url = `https://api.themoviedb.org/3/movie/${id}?api_key=${TMDB_API_KEY}&append_to_response=credits`;
-        const response = await fetch(url);
-
-        if (!response.ok) {
-            const errText = await response.text();
-            console.error("TMDB movie details error:", errText);
-            return res.status(502).json({ error: "Movie database returned an error." });
-        }
+        const response = await fetch(`https://api.themoviedb.org/3/movie/${id}?api_key=${TMDB_API_KEY}&append_to_response=credits`);
+        if (!response.ok) return res.status(502).json({ error: "Movie database returned an error." });
 
         const data = await response.json();
         res.json(data);
-
     } catch (err) {
         console.error("Movie details route error:", err);
         res.status(500).json({ error: "Something went wrong loading movie details." });
     }
 });
 
+// OPENROUTER AI RECOMMENDATION ROUTE (Replaces old Groq route)
 app.post("/api/recommend", requireAuthApi, async (req, res) => {
     const { description, genre, mood, era, length } = req.body;
 
-    if (!GROQ_API_KEY) {
-        console.error("Missing GROQ_API_KEY in .env");
-        return res.status(500).json({
-            error: "Server is missing a GROQ_API_KEY. Add one to your .env file."
-        });
+    if (!OPENROUTER_API_KEY) {
+        console.error("Missing OPENROUTER_API_KEY in environment variables");
+        return res.status(500).json({ error: "Server is missing an OPENROUTER_API_KEY." });
     }
 
     const filterLines = [];
@@ -267,44 +230,20 @@ Recommend exactly 6 real movies that fit. Respond with ONLY valid JSON (no markd
 `.trim();
 
     try {
-        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${GROQ_API_KEY}`
-            },
-            body: JSON.stringify({
-                model: GROQ_MODEL,
-                messages: [{ role: "user", content: userPrompt }],
-                max_tokens: 1000,
-                response_format: { type: "json_object" }
-            })
+        const completion = await openai.chat.completions.create({
+            model: MODEL_NAME,
+            messages: [{ role: "user", content: userPrompt }],
+            response_format: { type: "json_object" }
         });
 
-        if (!response.ok) {
-            const errText = await response.text();
-            console.error("Groq API error:", errText);
-            return res.status(502).json({ error: "AI provider returned an error." });
-        }
-
-        const data = await response.json();
-        const rawText = data.choices?.[0]?.message?.content || "";
-
+        const rawText = completion.choices[0]?.message?.content || "";
         const cleaned = rawText.replace(/```json|```/g, "").trim();
-
-        let parsed;
-        try {
-            parsed = JSON.parse(cleaned);
-        } catch (parseErr) {
-            console.error("Failed to parse AI response:", rawText);
-            return res.status(502).json({ error: "Could not parse AI response." });
-        }
+        const parsed = JSON.parse(cleaned);
 
         res.json(parsed);
-
     } catch (err) {
-        console.error("Recommendation route error:", err);
-        res.status(500).json({ error: "Something went wrong generating recommendations." });
+        console.error("OpenRouter recommendation error:", err);
+        res.status(502).json({ error: "Something went wrong generating recommendations." });
     }
 });
 
