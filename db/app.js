@@ -4,7 +4,7 @@ const path = require("path");
 const bcrypt = require("bcryptjs");
 const session = require("express-session");
 const MySQLStore = require("express-mysql-session")(session);
-const pool = require("./pool");
+const pool = require(path.join(__dirname, "pool.js"));
 const OpenAI = require("openai");
 
 // Environment variables
