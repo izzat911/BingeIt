@@ -1,9 +1,7 @@
-﻿require("dotenv").config();
-const app = require("./app");
+﻿const app = require("./db/app");
 
-// THIS IS THE ONLY CHANGE - USE AZURE'S PORT
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, () => {
     console.log(`BingeIt server running on port ${PORT}`);
 });

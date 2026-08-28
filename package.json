@@ -4,7 +4,7 @@
   "description": "AI-powered movie recommendation app",
   "main": "server.js",
 "scripts": {
-  "start": "node db/app.js"
+  "start": "node server.js"
 },
   "dependencies": {
     "dotenv": "^16.4.5",
