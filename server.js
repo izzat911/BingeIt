@@ -184,51 +184,62 @@ app.post("/api/recommend", requireAuthApi, async (req, res) => {
     const { description, genre, mood, era, length } = req.body;
     const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
-    // Fallback array if Groq API fails or times out
-    const fallbackMovies = [
-        { title: "Dilwale Dulhania Le Jayenge", year: "1995", genre: "Romance / Drama", reason: "Iconic Shah Rukh Khan romance classic." },
-        { title: "Kuch Kuch Hota Hai", year: "1998", genre: "Romance / Comedy", reason: "Beloved romantic drama starring Shah Rukh Khan." },
-        { title: "Veer-Zaara", year: "2004", genre: "Romance / Drama", reason: "Epic cross-border love story starring Shah Rukh Khan." },
-        { title: "Kal Ho Naa Ho", year: "2003", genre: "Romance / Drama", reason: "Emotional romantic comedy-drama classic." },
-        { title: "My Name Is Khan", year: "2010", genre: "Drama / Romance", reason: "Acclaimed drama featuring a powerful performance by Shah Rukh Khan." },
-        { title: "Om Shanti Om", year: "2007", genre: "Romance / Action", reason: "Entertaining rebirth and romantic revenge story." }
-    ];
-
-    if (!GROQ_API_KEY) {
-        console.error("GROQ_API_KEY is missing from environment variables.");
-        return res.json({ recommendations: fallbackMovies });
-    }
-
+    // Filter summary string
     const filterLines = [];
     if (genre) filterLines.push(`Genre: ${genre}`);
     if (mood) filterLines.push(`Mood: ${mood}`);
     if (era) filterLines.push(`Era: ${era}`);
     if (length) filterLines.push(`Preferred length: ${length}`);
 
-    const userPrompt = `
-Recommend exactly 6 real movies fitting these specific user preferences:
-${description ? `User description: "${description}"` : ""}
-${filterLines.length ? `Selected filters:\n${filterLines.join("\n")}` : ""}
+    const promptText = `${description || ""} ${genre || ""} ${mood || ""}`.trim() || "popular";
 
-Respond ONLY with valid JSON using this exact structure:
+    // Fallback dynamic TMDB fetch if Groq fails
+    async function getTmdbFallback() {
+        if (!TMDB_API_KEY) return [];
+        try {
+            const queryUrl = description 
+                ? `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(description)}`
+                : `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc`;
+            
+            const tmdbRes = await fetch(queryUrl);
+            const tmdbData = await tmdbRes.json();
+            return (tmdbData.results || []).slice(0, 6).map(m => ({
+                title: m.title,
+                year: (m.release_date || "").split("-")[0],
+                genre: genre || "Movie",
+                reason: m.overview ? m.overview.slice(0, 100) + "..." : "Matches your search criteria."
+            }));
+        } catch {
+            return [];
+        }
+    }
+
+    if (!GROQ_API_KEY) {
+        console.error("GROQ_API_KEY missing. Falling back to TMDB recommendations.");
+        const fallback = await getTmdbFallback();
+        return res.json({ recommendations: fallback });
+    }
+
+    const userPrompt = `
+Recommend exactly 6 real movies fitting these criteria:
+${description ? `Description: "${description}"` : ""}
+${filterLines.length ? `Filters:\n${filterLines.join("\n")}` : ""}
+
+Respond ONLY with valid JSON using this exact format:
 {
   "recommendations": [
-    { "title": "Movie Title", "year": "2010", "genre": "Sci-Fi", "reason": "Short reason why it fits." }
+    { "title": "Movie Title", "year": "2010", "genre": "Sci-Fi", "reason": "Short tailored reason." }
   ]
 }
 `.trim();
 
     try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
-
         const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: {
-                "Authorization": `Bearer ${GROQ_API_KEY}`,
+                "Authorization": `Bearer ${GROQ_API_KEY.trim()}`,
                 "Content-Type": "application/json"
             },
-            signal: controller.signal,
             body: JSON.stringify({
                 model: "llama-3.3-70b-versatile",
                 messages: [
@@ -240,12 +251,11 @@ Respond ONLY with valid JSON using this exact structure:
             })
         });
 
-        clearTimeout(timeoutId);
-
         if (!response.ok) {
-            const errText = await response.text();
-            console.error("Groq API Non-200 Status:", response.status, errText);
-            return res.json({ recommendations: fallbackMovies });
+            const errBody = await response.text();
+            console.error("Groq API error response:", response.status, errBody);
+            const fallback = await getTmdbFallback();
+            return res.json({ recommendations: fallback });
         }
 
         const data = await response.json();
@@ -256,9 +266,11 @@ Respond ONLY with valid JSON using this exact structure:
             return res.json(parsed);
         }
 
-        return res.json({ recommendations: fallbackMovies });
+        const fallback = await getTmdbFallback();
+        return res.json({ recommendations: fallback });
     } catch (err) {
-        console.error("Recommend error captured:", err.message);
-        return res.json({ recommendations: fallbackMovies });
+        console.error("Recommend route caught exception:", err);
+        const fallback = await getTmdbFallback();
+        return res.json({ recommendations: fallback });
     }
 });
