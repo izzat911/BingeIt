@@ -221,7 +221,7 @@ Recommend exactly 6 real movies that fit. Respond ONLY with a raw JSON object an
 
     try {
         const completion = await openai.chat.completions.create({
-            model: "mistralai/mistral-7b-instruct:free",
+            model: "google/gemini-2.5-flash",
             messages: [
                 { role: "system", content: "You are a movie recommendation assistant. Always output valid JSON only." },
                 { role: "user", content: userPrompt }
