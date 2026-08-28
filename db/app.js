@@ -28,16 +28,16 @@ const openai = new OpenAI({
 const app = express();
 app.set("trust proxy", 1);
 
-// Middleware
-app.use(express.json());
+app.use("/public", express.static(path.join(__dirname, "..", "public")));
 
-// MySQL Connection Test
-pool.getConnection()
-    .then(conn => {
-        console.log("Connected to MySQL");
-        conn.release();
-    })
-    .catch(err => console.error("MySQL connection error:", err.message));
+app.get(["/login.html", "/signup.html"], (req, res) => {
+    res.sendFile(path.join(__dirname, "..", "views", req.path));
+});
+
+app.get(["/", "/index.html", "/discover.html", "/ai.html", "/details.html"], requireAuthPage, (req, res) => {
+    const page = req.path === "/" ? "index.html" : req.path.slice(1);
+    res.sendFile(path.join(__dirname, "..", "views", page));
+});
 
 // Session Setup
 const sessionStore = new MySQLStore({
