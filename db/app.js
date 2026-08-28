@@ -6,9 +6,12 @@ const session = require("express-session");
 const MySQLStore = require("express-mysql-session")(session);
 const pool = require("./db/pool");
 
-const app = express();
-app.set('trust proxy', 1);
-const GROQ_API_KEY = process.env.GROQ_API_KEY;
+const Groq = require("groq-sdk");
+
+// Initialize the client explicitly with the key from process.env
+const groq = new Groq({ 
+  apiKey: process.env.GROQ_API_KEY 
+});
 const GROQ_MODEL = "llama-3.1-8b-instant";
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
 const SESSION_SECRET = process.env.SESSION_SECRET || "bingeit-dev-secret-change-this";
