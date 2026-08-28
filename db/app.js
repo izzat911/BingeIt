@@ -35,12 +35,12 @@ pool.getConnection()
 
 // Session Setup
 const sessionStore = new MySQLStore({
-    host: process.env.DB_HOST || "127.0.0.1",
-    port: process.env.DB_PORT || 3306,
-    user: process.env.DB_USER || "root",
-    password: process.env.DB_PASSWORD || "",
-    database: process.env.DB_NAME || "bingeit",
-    ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : undefined
+    host: process.env.DB_HOST || process.env.MYSQLHOST || "127.0.0.1",
+    port: process.env.DB_PORT || process.env.MYSQLPORT || 3306,
+    user: process.env.DB_USER || process.env.MYSQLUSER || "root",
+    password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || process.env.MYSQL_PASSWORD || "",
+    database: process.env.DB_NAME || process.env.MYSQLDATABASE || "bingeit",
+    ssl: process.env.DB_SSL === "true" || process.env.MYSQL_SSL === "true" ? { rejectUnauthorized: false } : undefined
 });
 
 app.use(session({
