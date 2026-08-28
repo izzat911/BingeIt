@@ -184,17 +184,9 @@ app.post("/api/recommend", requireAuthApi, async (req, res) => {
     const { description, genre, mood, era, length } = req.body;
     const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
-    const fallbackMovies = [
-        { title: "Inception", year: "2010", genre: "Sci-Fi / Action", reason: "Mind-bending heist thriller matching your prompt." },
-        { title: "The Dark Knight", year: "2008", genre: "Crime / Action", reason: "Intense, highly-acclaimed crime thriller." },
-        { title: "Interstellar", year: "2014", genre: "Sci-Fi / Drama", reason: "Visually stunning journey across space and time." },
-        { title: "Se7en", year: "1995", genre: "Crime / Mystery", reason: "Dark detective mystery with an unforgettable atmosphere." },
-        { title: "Pulp Fiction", year: "1994", genre: "Crime / Drama", reason: "Classic non-linear storytelling and iconic character dialogue." },
-        { title: "The Prestige", year: "2006", genre: "Drama / Mystery", reason: "Rival illusionists locked in a psychological battle." }
-    ];
-
     if (!GROQ_API_KEY) {
-        return res.json({ recommendations: fallbackMovies });
+        console.error("GROQ_API_KEY is missing from environment variables.");
+        return res.status(500).json({ error: "Server missing GROQ_API_KEY." });
     }
 
     const filterLines = [];
@@ -204,22 +196,22 @@ app.post("/api/recommend", requireAuthApi, async (req, res) => {
     if (length) filterLines.push(`Preferred length: ${length}`);
 
     const userPrompt = `
-Recommend exactly 6 real movies fitting:
-${description ? `Description: "${description}"` : ""}
-${filterLines.length ? `Filters:\n${filterLines.join("\n")}` : ""}
+Recommend exactly 6 real movies fitting these specific preferences:
+${description ? `User description: "${description}"` : ""}
+${filterLines.length ? `Selected filters:\n${filterLines.join("\n")}` : ""}
 
 Respond ONLY with valid JSON in this exact format:
 {
   "recommendations": [
-    { "title": "Movie Title", "year": "2010", "genre": "Sci-Fi", "reason": "Short reason why it fits." }
+    { "title": "Movie Title", "year": "2010", "genre": "Sci-Fi", "reason": "Short reason tailored to their prompt." }
   ]
 }
 `.trim();
 
-    try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 6000);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 18000);
 
+    try {
         const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -228,9 +220,9 @@ Respond ONLY with valid JSON in this exact format:
             },
             signal: controller.signal,
             body: JSON.stringify({
-                model: "llama-3.1-8b-instant",
+                model: "llama-3.3-70b-versatile",
                 messages: [
-                    { role: "system", content: "You are a movie recommendation assistant. Always output valid JSON only." },
+                    { role: "system", content: "You are a movie recommendation assistant. Generate tailored recommendations based strictly on the user request. Always output valid JSON only." },
                     { role: "user", content: userPrompt }
                 ],
                 temperature: 0.7,
@@ -241,7 +233,9 @@ Respond ONLY with valid JSON in this exact format:
         clearTimeout(timeoutId);
 
         if (!response.ok) {
-            return res.json({ recommendations: fallbackMovies });
+            const errBody = await response.text();
+            console.error("Groq API error details:", response.status, errBody);
+            return res.status(502).json({ error: "AI service error. Please try again." });
         }
 
         const data = await response.json();
@@ -252,13 +246,10 @@ Respond ONLY with valid JSON in this exact format:
             return res.json(parsed);
         }
 
-        return res.json({ recommendations: fallbackMovies });
+        res.status(502).json({ error: "Invalid response format from AI." });
     } catch (err) {
-        return res.json({ recommendations: fallbackMovies });
+        clearTimeout(timeoutId);
+        console.error("Recommendation route error:", err.name === "AbortError" ? "Groq API Timed Out" : err.message);
+        res.status(500).json({ error: "Failed to generate dynamic recommendations." });
     }
-});
-
-const PORT = process.env.PORT || 8080;
-app.listen(PORT, "0.0.0.0", () => {
-    console.log(`BingeIt server running on port ${PORT}`);
 });
