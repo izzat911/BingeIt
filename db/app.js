@@ -11,12 +11,18 @@ const OpenAI = require("openai");
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
 const SESSION_SECRET = process.env.SESSION_SECRET || "bingeit-dev-secret-change-this";
-const MODEL_NAME = "meta-llama/llama-3.3-70b-instruct:free";
+// Uses OpenRouter's auto-router (picks the best active free model automatically)
+const MODEL_NAME = "openrouter/auto";
 
 // OpenRouter Client Initialization
+// OpenRouter Client Initialization with required headers
 const openai = new OpenAI({
     baseURL: "https://openrouter.ai/api/v1",
-    apiKey: OPENROUTER_API_KEY || "dummy_key",
+    apiKey: process.env.OPENROUTER_API_KEY,
+    defaultHeaders: {
+        "HTTP-Referer": "https://valiant-gratitude-production.up.railway.app",
+        "X-Title": "BingeIt Movie Recommender",
+    }
 });
 
 const app = express();
