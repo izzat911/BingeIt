@@ -12,7 +12,7 @@ const path = require("path");
 const bcrypt = require("bcryptjs");
 const session = require("express-session");
 const MySQLStore = require("express-mysql-session")(session);
-const pool = require("./db/pool");
+const pool = require("./pool");
 const OpenAI = require("openai");
 
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
