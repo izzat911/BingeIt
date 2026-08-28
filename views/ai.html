@@ -1,0 +1,123 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BingeIt - AI Recommendations</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
+
+    <link rel="stylesheet" href="../public/css/style.css">
+    <link rel="stylesheet" href="../public/css/ai.css">
+</head>
+<body>
+
+    <header>
+        <nav class="navbar">
+            <div class="logo">
+                <img src="../public/images/camera-svgrepo-com.svg.png" alt="BingeIt Logo">
+                <h2>Binge<span>It</span></h2>
+            </div>
+            <ul class="nav-links">
+                <li><a href="index.html">Home</a></li>
+                <a href="discover.html">Discover</a>
+                <li><a href="ai.html" class="active">AI</a></li>
+                <a href="login.html" class="login-btn" id="login-nav-btn">Login</a>
+            </ul>
+        </nav>
+    </header>
+
+    <section class="ai-hero">
+        <span class="badge">Sparkles AI Powered Movie Discovery</span>
+        <h1>Tell us what you're <span>in the mood for</span></h1>
+        <p>Describe it in your own words, fine-tune with the filters below, and let AI find your next watch.</p>
+    </section>
+
+    <section class="ai-form-section">
+        <div class="ai-form-card">
+            <label for="mood-input" class="ai-label">Describe the kind of movie you want</label>
+            <textarea id="mood-input" placeholder="e.g. Something mind-bending with a twist ending, similar to Inception but shorter..." rows="3"></textarea>
+
+            <div class="filters-grid">
+                <div class="filter-group">
+                    <label for="genre">Genre</label>
+                    <select id="genre">
+                        <option value="">Any</option>
+                        <option>Action</option>
+                        <option>Comedy</option>
+                        <option>Drama</option>
+                        <option>Thriller</option>
+                        <option>Horror</option>
+                        <option>Sci-Fi</option>
+                        <option>Romance</option>
+                        <option>Crime</option>
+                        <option>Mystery</option>
+                        <option>Animation</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="mood">Mood</label>
+                    <select id="mood">
+                        <option value="">Any</option>
+                        <option>Feel-good</option>
+                        <option>Intense</option>
+                        <option>Thought-provoking</option>
+                        <option>Relaxing</option>
+                        <option>Nostalgic</option>
+                        <option>Dark</option>
+                        <option>Funny</option>
+                        <option>Romantic</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="era">Era</label>
+                    <select id="era">
+                        <option value="">Any</option>
+                        <option>2020s</option>
+                        <option>2010s</option>
+                        <option>2000s</option>
+                        <option>1990s</option>
+                        <option>Older Classics</option>
+                    </select>
+                </div>
+
+                <div class="filter-group">
+                    <label for="length">Length</label>
+                    <select id="length">
+                        <option value="">Any</option>
+                        <option>Under 90 min</option>
+                        <option>90-120 min</option>
+                        <option>Over 2 hours</option>
+                    </select>
+                </div>
+            </div>
+
+            <button id="ask-ai-btn" class="ai-submit-btn">
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
+                <span>Get Recommendations</span>
+            </button>
+        </div>
+    </section>
+
+    <section class="ai-results-section" id="results-section" hidden>
+        <div class="section-title">
+            <h2>Picked for you</h2>
+        </div>
+
+        <div id="ai-loading" class="ai-loading" hidden>
+            <div class="spinner"></div>
+            <p>Thinking through your taste...</p>
+        </div>
+
+        <div id="ai-error" class="ai-error" hidden></div>
+
+        <div id="ai-results-grid" class="ai-results-grid"></div>
+    </section>
+
+    <script src="../public/js/ai.js"></script>
+     <script src="../public/js/nav-auth.js"></script>
+</body>
+</html>
