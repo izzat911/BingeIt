@@ -16,16 +16,16 @@ const MODEL_NAME = "meta-llama/llama-3.3-70b-instruct:free";
 // OpenRouter Client Initialization
 const openai = new OpenAI({
     baseURL: "https://openrouter.ai/api/v1",
-    apiKey: OPENROUTER_API_KEY,
+    apiKey: OPENROUTER_API_KEY || "dummy_key",
 });
 
 const app = express();
 app.set("trust proxy", 1);
 
-// Middleware MUST come before routes
+// Middleware
 app.use(express.json());
 
-// MySQL connection check
+// MySQL Connection Test
 pool.getConnection()
     .then(conn => {
         console.log("Connected to MySQL");
@@ -51,7 +51,7 @@ app.use(session({
     cookie: { maxAge: 1000 * 60 * 60 * 24 * 7, secure: process.env.NODE_ENV === "production", sameSite: "lax" } 
 }));
 
-app.use("/public", express.static(path.join(__dirname, "public")));
+app.use("/public", express.static(path.join(__dirname, "..", "public")));
 
 // Auth Middlewares
 function requireAuthPage(req, res, next) {
@@ -66,12 +66,12 @@ function requireAuthApi(req, res, next) {
 
 // Static HTML Pages
 app.get(["/login.html", "/signup.html"], (req, res) => {
-    res.sendFile(path.join(__dirname, "views", req.path));
+    res.sendFile(path.join(__dirname, "..", "views", req.path));
 });
 
 app.get(["/", "/index.html", "/discover.html", "/ai.html", "/details.html"], requireAuthPage, (req, res) => {
     const page = req.path === "/" ? "index.html" : req.path.slice(1);
-    res.sendFile(path.join(__dirname, "views", page));
+    res.sendFile(path.join(__dirname, "..", "views", page));
 });
 
 // Auth Routes
@@ -138,7 +138,7 @@ app.get("/api/me", (req, res) => {
     }
 });
 
-// TMDB Movie Routes
+// TMDB Routes
 app.get("/api/discover", requireAuthApi, async (req, res) => {
     const { query, genre, page } = req.query;
     const pageNum = page || 1;
@@ -199,7 +199,7 @@ app.get("/api/movie/:id", requireAuthApi, async (req, res) => {
     }
 });
 
-// OPENROUTER AI RECOMMENDATION ROUTE (Replaces old Groq route)
+// OpenRouter AI Recommendation Route
 app.post("/api/recommend", requireAuthApi, async (req, res) => {
     const { description, genre, mood, era, length } = req.body;
 
@@ -220,8 +220,7 @@ A user wants movie recommendations.
 ${description ? `Their description: "${description}"` : ""}
 ${filterLines.length ? `Filters they selected:\n${filterLines.join("\n")}` : ""}
 
-Recommend exactly 6 real movies that fit. Respond with ONLY valid JSON (no markdown, no code fences, no preamble), in this exact shape:
-
+Recommend exactly 6 real movies that fit. Respond ONLY with a raw JSON object and no surrounding text or formatting, in this exact shape:
 {
   "recommendations": [
     { "title": "Movie Title", "year": "2010", "genre": "Sci-Fi", "reason": "One or two sentence reason this fits what they asked for." }
@@ -232,17 +231,24 @@ Recommend exactly 6 real movies that fit. Respond with ONLY valid JSON (no markd
     try {
         const completion = await openai.chat.completions.create({
             model: MODEL_NAME,
-            messages: [{ role: "user", content: userPrompt }],
-            response_format: { type: "json_object" }
+            messages: [{ role: "user", content: userPrompt }]
         });
 
         const rawText = completion.choices[0]?.message?.content || "";
-        const cleaned = rawText.replace(/```json|```/g, "").trim();
+        
+        const jsonStart = rawText.indexOf("{");
+        const jsonEnd = rawText.lastIndexOf("}");
+        
+        if (jsonStart === -1 || jsonEnd === -1) {
+            throw new Error("AI did not return a valid JSON structure.");
+        }
+
+        const cleaned = rawText.substring(jsonStart, jsonEnd + 1);
         const parsed = JSON.parse(cleaned);
 
         res.json(parsed);
     } catch (err) {
-        console.error("OpenRouter recommendation error:", err);
+        console.error("OpenRouter recommendation error details:", err.message || err);
         res.status(502).json({ error: "Something went wrong generating recommendations." });
     }
 });
