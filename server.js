@@ -21,10 +21,10 @@ const SESSION_SECRET = process.env.SESSION_SECRET || "bingeit-dev-secret-change-
 
 const openai = new OpenAI({
     baseURL: "https://openrouter.ai/api/v1",
-    apiKey: OPENROUTER_API_KEY || "dummy_key",
+    apiKey: OPENROUTER_API_KEY,
     defaultHeaders: {
         "HTTP-Referer": "https://valiant-gratitude-production.up.railway.app",
-        "X-Title": "BingeIt Movie Recommender",
+        "X-Title": "BingeIt",
     }
 });
 
@@ -221,7 +221,7 @@ Recommend exactly 6 real movies that fit. Respond ONLY with a raw JSON object an
 
     try {
         const completion = await openai.chat.completions.create({
-            model: "meta-llama/llama-3.3-70b-instruct:free",
+            model: "mistralai/mistral-7b-instruct:free",
             messages: [
                 { role: "system", content: "You are a movie recommendation assistant. Always output valid JSON only." },
                 { role: "user", content: userPrompt }
