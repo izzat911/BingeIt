@@ -195,8 +195,7 @@ app.post("/api/recommend", requireAuthApi, async (req, res) => {
     const { description, genre, mood, era, length } = req.body;
 
     if (!OPENROUTER_API_KEY) {
-        console.error("Missing OPENROUTER_API_KEY in environment variables");
-        return res.status(500).json({ error: "Server is missing an OPENROUTER_API_KEY." });
+        return res.status(500).json({ error: "Server missing OPENROUTER_API_KEY." });
     }
 
     const filterLines = [];
@@ -206,15 +205,14 @@ app.post("/api/recommend", requireAuthApi, async (req, res) => {
     if (length) filterLines.push(`Preferred length: ${length}`);
 
     const userPrompt = `
-A user wants movie recommendations.
+Recommend exactly 6 real movies fitting these criteria:
+${description ? `Description: "${description}"` : ""}
+${filterLines.length ? `Filters:\n${filterLines.join("\n")}` : ""}
 
-${description ? `Their description: "${description}"` : ""}
-${filterLines.length ? `Filters they selected:\n${filterLines.join("\n")}` : ""}
-
-Recommend exactly 6 real movies that fit. Respond ONLY with a raw JSON object and no markdown formatting, using this exact structure:
+Respond ONLY with valid JSON with this exact structure:
 {
   "recommendations": [
-    { "title": "Movie Title", "year": "2010", "genre": "Sci-Fi", "reason": "Short sentence on why this fits." }
+    { "title": "Movie Title", "year": "2010", "genre": "Sci-Fi", "reason": "Short reason." }
   ]
 }
 `.trim();
@@ -229,7 +227,13 @@ Recommend exactly 6 real movies that fit. Respond ONLY with a raw JSON object an
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                model: "qwen/qwen-2.5-7b-instruct:free",
+                // OpenRouter attempts each model in order until one succeeds
+                models: [
+                    "google/gemini-2.5-flash",
+                    "meta-llama/llama-3.3-70b-instruct:free",
+                    "mistralai/mistral-7b-instruct:free",
+                    "qwen/qwen-2.5-7b-instruct:free"
+                ],
                 messages: [
                     { role: "system", content: "You are a movie recommendation assistant. Always output valid JSON only." },
                     { role: "user", content: userPrompt }
@@ -238,29 +242,25 @@ Recommend exactly 6 real movies that fit. Respond ONLY with a raw JSON object an
             })
         });
 
+        const data = await response.json();
+
         if (!response.ok) {
-            const errText = await response.text();
-            console.error("OpenRouter Returned Error:", response.status, errText);
-            return res.status(502).json({ error: `OpenRouter error status ${response.status}: ${errText}` });
+            console.error("OpenRouter Error Response:", response.status, data);
+            return res.status(502).json({ error: data.error?.message || `OpenRouter returned status ${response.status}` });
         }
 
-        const data = await response.json();
-        const rawText = data.choices[0]?.message?.content || "";
-
+        const rawText = data.choices?.[0]?.message?.content || "";
         const jsonStart = rawText.indexOf("{");
         const jsonEnd = rawText.lastIndexOf("}");
 
         if (jsonStart === -1 || jsonEnd === -1) {
-            console.error("Raw AI response missing JSON brackets:", rawText);
             return res.status(502).json({ error: "AI response did not contain valid JSON." });
         }
 
         const cleaned = rawText.substring(jsonStart, jsonEnd + 1);
-        const parsed = JSON.parse(cleaned);
-
-        res.json(parsed);
+        res.json(JSON.parse(cleaned));
     } catch (err) {
-        console.error("Exception in recommend endpoint:", err);
+        console.error("Recommend error:", err);
         res.status(500).json({ error: err.message || "Internal server error." });
     }
 });
