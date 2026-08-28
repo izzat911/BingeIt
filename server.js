@@ -193,9 +193,11 @@ app.get("/api/movie/:id", requireAuthApi, async (req, res) => {
 
 app.post("/api/recommend", requireAuthApi, async (req, res) => {
     const { description, genre, mood, era, length } = req.body;
+    const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
-    if (!OPENROUTER_API_KEY) {
-        return res.status(500).json({ error: "Server missing OPENROUTER_API_KEY." });
+    if (!GROQ_API_KEY) {
+        console.error("Missing GROQ_API_KEY in environment variables");
+        return res.status(500).json({ error: "Server missing GROQ_API_KEY." });
     }
 
     const filterLines = [];
@@ -209,58 +211,43 @@ Recommend exactly 6 real movies fitting these criteria:
 ${description ? `Description: "${description}"` : ""}
 ${filterLines.length ? `Filters:\n${filterLines.join("\n")}` : ""}
 
-Respond ONLY with valid JSON with this exact structure:
+Respond ONLY with valid JSON using this exact structure:
 {
   "recommendations": [
-    { "title": "Movie Title", "year": "2010", "genre": "Sci-Fi", "reason": "Short reason." }
+    { "title": "Movie Title", "year": "2010", "genre": "Sci-Fi", "reason": "Short reason why it fits." }
   ]
 }
 `.trim();
 
     try {
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: {
-                "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-                "HTTP-Referer": "https://valiant-gratitude-production.up.railway.app",
-                "X-Title": "BingeIt",
+                "Authorization": `Bearer ${GROQ_API_KEY}`,
                 "Content-Type": "application/json"
             },
             body: JSON.stringify({
-                // OpenRouter attempts each model in order until one succeeds
-                models: [
-                    "google/gemini-2.5-flash",
-                    "meta-llama/llama-3.3-70b-instruct:free",
-                    "mistralai/mistral-7b-instruct:free",
-                    "qwen/qwen-2.5-7b-instruct:free"
-                ],
+                model: "llama-3.3-70b-versatile",
                 messages: [
                     { role: "system", content: "You are a movie recommendation assistant. Always output valid JSON only." },
                     { role: "user", content: userPrompt }
                 ],
-                temperature: 0.7
+                temperature: 0.7,
+                response_format: { type: "json_object" }
             })
         });
 
         const data = await response.json();
 
         if (!response.ok) {
-            console.error("OpenRouter Error Response:", response.status, data);
-            return res.status(502).json({ error: data.error?.message || `OpenRouter returned status ${response.status}` });
+            console.error("Groq Error Response:", response.status, data);
+            return res.status(502).json({ error: data.error?.message || "Groq API error." });
         }
 
         const rawText = data.choices?.[0]?.message?.content || "";
-        const jsonStart = rawText.indexOf("{");
-        const jsonEnd = rawText.lastIndexOf("}");
-
-        if (jsonStart === -1 || jsonEnd === -1) {
-            return res.status(502).json({ error: "AI response did not contain valid JSON." });
-        }
-
-        const cleaned = rawText.substring(jsonStart, jsonEnd + 1);
-        res.json(JSON.parse(cleaned));
+        res.json(JSON.parse(rawText));
     } catch (err) {
-        console.error("Recommend error:", err);
+        console.error("Recommend execution error:", err);
         res.status(500).json({ error: err.message || "Internal server error." });
     }
 });
