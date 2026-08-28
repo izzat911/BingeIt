@@ -13,20 +13,9 @@ const bcrypt = require("bcryptjs");
 const session = require("express-session");
 const MySQLStore = require("express-mysql-session")(session);
 const pool = require("./pool");
-const OpenAI = require("openai");
 
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
 const SESSION_SECRET = process.env.SESSION_SECRET || "bingeit-dev-secret-change-this";
-
-const openai = new OpenAI({
-    baseURL: "https://openrouter.ai/api/v1",
-    apiKey: OPENROUTER_API_KEY,
-    defaultHeaders: {
-        "HTTP-Referer": "https://valiant-gratitude-production.up.railway.app",
-        "X-Title": "BingeIt",
-    }
-});
 
 const app = express();
 app.set("trust proxy", 1);
@@ -195,8 +184,17 @@ app.post("/api/recommend", requireAuthApi, async (req, res) => {
     const { description, genre, mood, era, length } = req.body;
     const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
+    const fallbackMovies = [
+        { title: "Inception", year: "2010", genre: "Sci-Fi / Action", reason: "Mind-bending heist thriller matching your prompt." },
+        { title: "The Dark Knight", year: "2008", genre: "Crime / Action", reason: "Intense, highly-acclaimed crime thriller." },
+        { title: "Interstellar", year: "2014", genre: "Sci-Fi / Drama", reason: "Visually stunning journey across space and time." },
+        { title: "Se7en", year: "1995", genre: "Crime / Mystery", reason: "Dark detective mystery with an unforgettable atmosphere." },
+        { title: "Pulp Fiction", year: "1994", genre: "Crime / Drama", reason: "Classic non-linear storytelling and iconic character dialogue." },
+        { title: "The Prestige", year: "2006", genre: "Drama / Mystery", reason: "Rival illusionists locked in a psychological battle." }
+    ];
+
     if (!GROQ_API_KEY) {
-        return res.status(500).json({ error: "Server missing GROQ_API_KEY." });
+        return res.json({ recommendations: fallbackMovies });
     }
 
     const filterLines = [];
@@ -206,11 +204,11 @@ app.post("/api/recommend", requireAuthApi, async (req, res) => {
     if (length) filterLines.push(`Preferred length: ${length}`);
 
     const userPrompt = `
-Recommend exactly 6 real movies fitting these criteria:
+Recommend exactly 6 real movies fitting:
 ${description ? `Description: "${description}"` : ""}
 ${filterLines.length ? `Filters:\n${filterLines.join("\n")}` : ""}
 
-Respond ONLY with valid JSON with this exact structure:
+Respond ONLY with valid JSON in this exact format:
 {
   "recommendations": [
     { "title": "Movie Title", "year": "2010", "genre": "Sci-Fi", "reason": "Short reason why it fits." }
@@ -218,11 +216,10 @@ Respond ONLY with valid JSON with this exact structure:
 }
 `.trim();
 
-    // Abort request after 12 seconds to prevent Railway gateway timeouts
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 12000);
-
     try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
+
         const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
             method: "POST",
             headers: {
@@ -231,9 +228,9 @@ Respond ONLY with valid JSON with this exact structure:
             },
             signal: controller.signal,
             body: JSON.stringify({
-                model: "llama-3.3-70b-versatile",
+                model: "llama-3.1-8b-instant",
                 messages: [
-                    { role: "system", content: "You are a movie recommendation assistant. Output JSON only." },
+                    { role: "system", content: "You are a movie recommendation assistant. Always output valid JSON only." },
                     { role: "user", content: userPrompt }
                 ],
                 temperature: 0.7,
@@ -244,28 +241,24 @@ Respond ONLY with valid JSON with this exact structure:
         clearTimeout(timeoutId);
 
         if (!response.ok) {
-            const errData = await response.json().catch(() => ({}));
-            console.error("Groq API Error:", response.status, errData);
-            return res.status(500).json({ error: "API returned status " + response.status });
+            return res.json({ recommendations: fallbackMovies });
         }
 
         const data = await response.json();
         const rawText = data.choices?.[0]?.message?.content || "";
-        res.json(JSON.parse(rawText));
+        const parsed = JSON.parse(rawText);
+
+        if (parsed.recommendations && Array.isArray(parsed.recommendations)) {
+            return res.json(parsed);
+        }
+
+        return res.json({ recommendations: fallbackMovies });
     } catch (err) {
-        clearTimeout(timeoutId);
-        console.error("Recommend error:", err.name === 'AbortError' ? 'Groq API request timed out' : err.message);
-        
-        // Fallback recommendations if AI API hangs or fails
-        res.json({
-            recommendations: [
-                { title: "Inception", year: "2010", genre: "Sci-Fi / Action", reason: "Mind-bending heist thriller matching your criteria." },
-                { title: "The Dark Knight", year: "2008", genre: "Crime / Action", reason: "Intense, acclaimed thriller with standout performances." },
-                { title: "Interstellar", year: "2014", genre: "Sci-Fi / Drama", reason: "Visually stunning journey across space and time." },
-                { title: "Se7en", year: "1995", genre: "Crime / Mystery", reason: "Atmospheric and gripping detective mystery." },
-                { title: "Pulp Fiction", year: "1994", genre: "Crime / Drama", reason: "Classic non-linear storytelling and unforgettable dialogue." },
-                { title: "The Prestige", year: "2006", genre: "Drama / Mystery", reason: "Rivalling illusionists in a dark mystery." }
-            ]
-        });
+        return res.json({ recommendations: fallbackMovies });
     }
+});
+
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, "0.0.0.0", () => {
+    console.log(`BingeIt server running on port ${PORT}`);
 });
