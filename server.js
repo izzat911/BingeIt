@@ -184,21 +184,13 @@ app.post("/api/recommend", requireAuthApi, async (req, res) => {
     const { description, genre, mood, era, length } = req.body;
     const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
-    // Filter summary string
-    const filterLines = [];
-    if (genre) filterLines.push(`Genre: ${genre}`);
-    if (mood) filterLines.push(`Mood: ${mood}`);
-    if (era) filterLines.push(`Era: ${era}`);
-    if (length) filterLines.push(`Preferred length: ${length}`);
-
-    const promptText = `${description || ""} ${genre || ""} ${mood || ""}`.trim() || "popular";
-
-    // Fallback dynamic TMDB fetch if Groq fails
+    // Helper to generate dynamic backup recommendations via TMDB
     async function getTmdbFallback() {
         if (!TMDB_API_KEY) return [];
         try {
+            const queryText = (description || mood || genre || "popular").trim();
             const queryUrl = description 
-                ? `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(description)}`
+                ? `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(queryText)}`
                 : `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc`;
             
             const tmdbRes = await fetch(queryUrl);
@@ -207,25 +199,32 @@ app.post("/api/recommend", requireAuthApi, async (req, res) => {
                 title: m.title,
                 year: (m.release_date || "").split("-")[0],
                 genre: genre || "Movie",
-                reason: m.overview ? m.overview.slice(0, 100) + "..." : "Matches your search criteria."
+                reason: m.overview ? m.overview.slice(0, 110) + "..." : "Matches your requested criteria."
             }));
-        } catch {
+        } catch (e) {
+            console.error("TMDB Fallback Error:", e);
             return [];
         }
     }
 
     if (!GROQ_API_KEY) {
-        console.error("GROQ_API_KEY missing. Falling back to TMDB recommendations.");
+        console.error("GROQ_API_KEY missing. Returning TMDB recommendations.");
         const fallback = await getTmdbFallback();
         return res.json({ recommendations: fallback });
     }
+
+    const filterLines = [];
+    if (genre) filterLines.push(`Genre: ${genre}`);
+    if (mood) filterLines.push(`Mood: ${mood}`);
+    if (era) filterLines.push(`Era: ${era}`);
+    if (length) filterLines.push(`Preferred length: ${length}`);
 
     const userPrompt = `
 Recommend exactly 6 real movies fitting these criteria:
 ${description ? `Description: "${description}"` : ""}
 ${filterLines.length ? `Filters:\n${filterLines.join("\n")}` : ""}
 
-Respond ONLY with valid JSON using this exact format:
+Respond ONLY with valid JSON using this exact structure:
 {
   "recommendations": [
     { "title": "Movie Title", "year": "2010", "genre": "Sci-Fi", "reason": "Short tailored reason." }
