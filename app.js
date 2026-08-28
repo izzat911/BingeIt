@@ -1,3 +1,10 @@
+// Catch unhandled errors so Node doesn't crash the container immediately
+process.on("unhandledRejection", (reason, promise) => {
+    console.error("Unhandled Rejection at:", promise, "reason:", reason);
+});
+process.on("uncaughtException", (err) => {
+    console.error("Uncaught Exception thrown:", err);
+});
 require("dotenv").config();
 const express = require("express");
 const path = require("path");
@@ -46,7 +53,8 @@ const sessionStore = new MySQLStore({
     user: process.env.DB_USER || process.env.MYSQLUSER || "root",
     password: process.env.DB_PASSWORD || process.env.MYSQLPASSWORD || process.env.MYSQL_PASSWORD || "",
     database: process.env.DB_NAME || process.env.MYSQLDATABASE || "bingeit",
-    ssl: process.env.DB_SSL === "true" || process.env.MYSQL_SSL === "true" ? { rejectUnauthorized: false } : undefined
+    ssl: process.env.DB_SSL === "true" || process.env.MYSQL_SSL === "true" ? { rejectUnauthorized: false } : undefined,
+    createDatabaseTable: true
 });
 
 app.use(session({
