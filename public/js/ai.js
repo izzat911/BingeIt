@@ -38,19 +38,22 @@ async function getRecommendations() {
         const response = await fetch("/api/recommend", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
+            credentials: "include",
             body: JSON.stringify({ description, genre, mood, era, length })
         });
 
+        const data = await response.json();
+
         if (!response.ok) {
-            throw new Error("Server returned an error");
+            showError(data.error || "Failed to load recommendations.");
+            return;
         }
 
-        const data = await response.json();
         renderResults(data.recommendations);
 
     } catch (err) {
-        showError("Something went wrong getting recommendations. Please try again.");
-        console.error(err);
+        showError("Network connection error. Please try again.");
+        console.error("Fetch exception:", err);
     } finally {
         loadingEl.hidden = true;
         askAiBtn.disabled = false;
@@ -67,7 +70,7 @@ function renderResults(recommendations) {
         <div class="ai-result-card">
             <h3>${escapeHtml(movie.title)}</h3>
             <span class="meta">${escapeHtml(movie.year || "")} ${movie.genre ? "- " + escapeHtml(movie.genre) : ""}</span>
-            <p>${escapeHtml(movie.reason)}</p>
+            <p>${escapeHtml(movie.reason || "")}</p>
         </div>
     `).join("");
 }
@@ -78,6 +81,7 @@ function showError(message) {
 }
 
 function escapeHtml(str) {
+    if (!str) return "";
     const div = document.createElement("div");
     div.textContent = str;
     return div.innerHTML;
