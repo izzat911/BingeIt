@@ -182,100 +182,124 @@ app.get("/api/movie/:id", requireAuthApi, async (req, res) => {
 
 app.post("/api/recommend", requireAuthApi, async (req, res) => {
     const { description, genre, mood, era, length } = req.body;
-    console.log("=== RECOMMEND REQUEST ===", { description, genre, mood, era, length });
 
     if (!TMDB_API_KEY) {
-        console.log("ERROR: No TMDB_API_KEY set");
         return res.status(500).json({ error: "Server is missing a TMDB_API_KEY." });
+    }
+
+    // TMDB's official genre IDs
+    const GENRE_MAP = {
+        "action": 28, "adventure": 12, "animation": 16, "animated": 16,
+        "comedy": 35, "comedies": 35, "crime": 80, "documentary": 99,
+        "drama": 18, "dramas": 18, "family": 10751, "fantasy": 14,
+        "history": 36, "historical": 36, "horror": 27, "music": 10402,
+        "musical": 10402, "mystery": 9648, "romance": 10749, "romantic": 10749,
+        "scifi": 878, "sci-fi": 878, "science fiction": 878,
+        "thriller": 53, "thrillers": 53, "war": 10752,
+        "western": 37, "westerns": 37
+    };
+
+    function findGenreId(text) {
+        const lower = text.toLowerCase();
+        for (const [keyword, id] of Object.entries(GENRE_MAP)) {
+            if (lower.includes(keyword)) return id;
+        }
+        return null;
+    }
+
+    async function discoverByGenre(genreId, eraFilter) {
+        let url = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${genreId}&sort_by=vote_average.desc&vote_count.gte=1000`;
+        if (eraFilter) url += eraFilter;
+        const r = await fetch(url);
+        const d = await r.json();
+        return (d.results || []).filter(m => m.vote_count > 100);
+    }
+
+    function buildEraFilter(era) {
+        const eraMap = {
+            "2020s": "2020-01-01,2029-12-31",
+            "2010s": "2010-01-01,2019-12-31",
+            "2000s": "2000-01-01,2009-12-31",
+            "1990s": "1990-01-01,1999-12-31",
+            "1980s": "1980-01-01,1989-12-31"
+        };
+        if (!eraMap[era]) return "";
+        const [gte, lte] = eraMap[era].split(",");
+        return `&primary_release_date.gte=${gte}&primary_release_date.lte=${lte}`;
     }
 
     try {
         const rawText = (description || mood || genre || "").trim();
-        const cleanedForPerson = rawText
-            .replace(/\b(movies?|films?|shows?|series|please|recommend|suggest)\b/gi, "")
-            .replace(/\s+/g, " ")
-            .trim();
-
-        console.log("rawText:", JSON.stringify(rawText), "| cleanedForPerson:", JSON.stringify(cleanedForPerson));
-
+        const eraFilter = buildEraFilter(era);
         let results = [];
+        let matchedGenreLabel = null;
 
         if (rawText) {
-            if (cleanedForPerson) {
-                const personUrl = `https://api.themoviedb.org/3/search/person?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(cleanedForPerson)}`;
-                const personRes = await fetch(personUrl);
-                console.log("Person search status:", personRes.status);
-                const personData = await personRes.json();
-                console.log("Person search results count:", (personData.results || []).length);
-                if (personData.results && personData.results.length > 0) {
-                    console.log("Top person match:", personData.results[0].name, "| id:", personData.results[0].id);
-                }
+            // Priority 1: does the text match a known genre? (e.g. "crime", "action", "romantic")
+            const genreId = findGenreId(rawText);
+            if (genreId) {
+                results = await discoverByGenre(genreId, eraFilter);
+                matchedGenreLabel = Object.keys(GENRE_MAP).find(k => GENRE_MAP[k] === genreId);
+            }
 
-                if (personData.results && personData.results.length > 0) {
-                    const personId = personData.results[0].id;
-                    const creditsRes = await fetch(
-                        `https://api.themoviedb.org/3/person/${personId}/movie_credits?api_key=${TMDB_API_KEY}`
+            // Priority 2: does the text match a real actor/director name?
+            if (results.length === 0) {
+                const cleanedForPerson = rawText
+                    .replace(/\b(movies?|films?|shows?|series|please|recommend|suggest)\b/gi, "")
+                    .replace(/\s+/g, " ")
+                    .trim();
+
+                if (cleanedForPerson) {
+                    const personRes = await fetch(
+                        `https://api.themoviedb.org/3/search/person?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(cleanedForPerson)}`
                     );
-                    console.log("Credits fetch status:", creditsRes.status);
-                    const creditsData = await creditsRes.json();
-                    const cast = creditsData.cast || [];
-                    console.log("Raw cast count:", cast.length);
-                    results = cast
-                        .filter(m => m.vote_count > 20 && m.poster_path)
-                        .sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
-                    console.log("Filtered cast results count:", results.length);
+                    const personData = await personRes.json();
+                    if (personData.results && personData.results.length > 0) {
+                        const personId = personData.results[0].id;
+                        const creditsRes = await fetch(
+                            `https://api.themoviedb.org/3/person/${personId}/movie_credits?api_key=${TMDB_API_KEY}`
+                        );
+                        const creditsData = await creditsRes.json();
+                        const cast = creditsData.cast || [];
+                        results = cast
+                            .filter(m => m.vote_count > 20 && m.poster_path)
+                            .sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+                    }
                 }
             }
 
+            // Priority 3: literal title search (only useful if they typed an actual movie name)
             if (results.length === 0) {
-                console.log("Falling back to title search for:", rawText);
                 const movieRes = await fetch(
                     `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(rawText)}`
                 );
                 const movieData = await movieRes.json();
                 results = (movieData.results || []).filter(m => m.vote_count > 20);
-                console.log("Title search results count:", results.length);
             }
 
+            // Priority 4: give up gracefully, show popular movies rather than an error
             if (results.length === 0) {
-                console.log("Falling back to generic popular discover");
                 const discoverRes = await fetch(
                     `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc`
                 );
                 const discoverData = await discoverRes.json();
                 results = (discoverData.results || []).filter(m => m.vote_count > 20);
-                console.log("Discover fallback results count:", results.length);
             }
         } else {
-            console.log("No search text, using genre/era filters only");
+            // No typed text — use the Genre/Era dropdowns directly
             let url = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc`;
-
-            if (era) {
-                const eraMap = {
-                    "2020s": "2020-01-01,2029-12-31",
-                    "2010s": "2010-01-01,2019-12-31",
-                    "2000s": "2000-01-01,2009-12-31",
-                    "1990s": "1990-01-01,1999-12-31",
-                    "1980s": "1980-01-01,1989-12-31"
-                };
-                if (eraMap[era]) {
-                    const [gte, lte] = eraMap[era].split(",");
-                    url += `&primary_release_date.gte=${gte}&primary_release_date.lte=${lte}`;
-                }
-            }
+            if (genre) url += `&with_genres=${genre}`;
+            url += eraFilter;
 
             const discoverRes = await fetch(url);
             const discoverData = await discoverRes.json();
             results = (discoverData.results || []).filter(m => m.vote_count > 20);
-            console.log("Filter-only results count:", results.length);
         }
-
-        console.log("FINAL results count going to client:", results.length);
 
         const recommendations = results.slice(0, 6).map(m => ({
             title: m.title,
             year: (m.release_date || "").split("-")[0] || "N/A",
-            genre: genre || "Movie",
+            genre: matchedGenreLabel ? matchedGenreLabel[0].toUpperCase() + matchedGenreLabel.slice(1) : (genre || "Movie"),
             reason: m.overview ? m.overview.slice(0, 140) + (m.overview.length > 140 ? "..." : "") : "Popular pick matching your search."
         }));
 
