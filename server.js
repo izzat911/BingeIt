@@ -182,63 +182,72 @@ app.get("/api/movie/:id", requireAuthApi, async (req, res) => {
 
 app.post("/api/recommend", requireAuthApi, async (req, res) => {
     const { description, genre, mood, era, length } = req.body;
+    console.log("=== RECOMMEND REQUEST ===", { description, genre, mood, era, length });
 
     if (!TMDB_API_KEY) {
+        console.log("ERROR: No TMDB_API_KEY set");
         return res.status(500).json({ error: "Server is missing a TMDB_API_KEY." });
     }
 
     try {
         const rawText = (description || mood || genre || "").trim();
-
-        // Strip common filler words so "shahrukh khan movies" -> "shahrukh khan"
-        // This makes person-name matching much more reliable.
         const cleanedForPerson = rawText
             .replace(/\b(movies?|films?|shows?|series|please|recommend|suggest)\b/gi, "")
             .replace(/\s+/g, " ")
             .trim();
 
+        console.log("rawText:", JSON.stringify(rawText), "| cleanedForPerson:", JSON.stringify(cleanedForPerson));
+
         let results = [];
 
         if (rawText) {
-            // Step 1: try searching for a matching person (actor/director) using the cleaned name
             if (cleanedForPerson) {
-                const personRes = await fetch(
-                    `https://api.themoviedb.org/3/search/person?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(cleanedForPerson)}`
-                );
+                const personUrl = `https://api.themoviedb.org/3/search/person?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(cleanedForPerson)}`;
+                const personRes = await fetch(personUrl);
+                console.log("Person search status:", personRes.status);
                 const personData = await personRes.json();
+                console.log("Person search results count:", (personData.results || []).length);
+                if (personData.results && personData.results.length > 0) {
+                    console.log("Top person match:", personData.results[0].name, "| id:", personData.results[0].id);
+                }
 
                 if (personData.results && personData.results.length > 0) {
                     const personId = personData.results[0].id;
                     const creditsRes = await fetch(
                         `https://api.themoviedb.org/3/person/${personId}/movie_credits?api_key=${TMDB_API_KEY}`
                     );
+                    console.log("Credits fetch status:", creditsRes.status);
                     const creditsData = await creditsRes.json();
                     const cast = creditsData.cast || [];
+                    console.log("Raw cast count:", cast.length);
                     results = cast
                         .filter(m => m.vote_count > 20 && m.poster_path)
                         .sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+                    console.log("Filtered cast results count:", results.length);
                 }
             }
 
-            // Step 2: if no person match, fall back to title search using the original text
             if (results.length === 0) {
+                console.log("Falling back to title search for:", rawText);
                 const movieRes = await fetch(
                     `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(rawText)}`
                 );
                 const movieData = await movieRes.json();
                 results = (movieData.results || []).filter(m => m.vote_count > 20);
+                console.log("Title search results count:", results.length);
             }
 
-            // Step 3: still nothing? Fall back to popular movies rather than an empty error
             if (results.length === 0) {
+                console.log("Falling back to generic popular discover");
                 const discoverRes = await fetch(
                     `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc`
                 );
                 const discoverData = await discoverRes.json();
                 results = (discoverData.results || []).filter(m => m.vote_count > 20);
+                console.log("Discover fallback results count:", results.length);
             }
         } else {
-            // No search text — just use filters (genre/era) against discover
+            console.log("No search text, using genre/era filters only");
             let url = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc`;
 
             if (era) {
@@ -258,7 +267,10 @@ app.post("/api/recommend", requireAuthApi, async (req, res) => {
             const discoverRes = await fetch(url);
             const discoverData = await discoverRes.json();
             results = (discoverData.results || []).filter(m => m.vote_count > 20);
+            console.log("Filter-only results count:", results.length);
         }
+
+        console.log("FINAL results count going to client:", results.length);
 
         const recommendations = results.slice(0, 6).map(m => ({
             title: m.title,
@@ -274,7 +286,6 @@ app.post("/api/recommend", requireAuthApi, async (req, res) => {
         res.status(500).json({ error: "Something went wrong getting recommendations." });
     }
 });
-const PORT = process.env.PORT || 3000;
 app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on port ${PORT}`);
 });
