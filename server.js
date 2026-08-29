@@ -182,18 +182,19 @@ app.get("/api/movie/:id", requireAuthApi, async (req, res) => {
 
 app.post("/api/recommend", requireAuthApi, async (req, res) => {
     const { description, genre, mood, era, length } = req.body;
+    const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
     if (!TMDB_API_KEY) {
         return res.status(500).json({ error: "Server is missing a TMDB_API_KEY." });
     }
 
     const GENRE_MAP = {
-        "action": 28, "adventure": 12, "animation": 16,
-        "comedy": 35, "crime": 80, "documentary": 99,
-        "drama": 18, "family": 10751, "fantasy": 14,
-        "history": 36, "horror": 27, "music": 10402,
-        "mystery": 9648, "romance": 10749,
-        "science fiction": 878, "sci-fi": 878,
+        "action": 28, "adventure": 12, "animation": 16, "animated": 16,
+        "comedy": 35, "comedic": 35, "crime": 80, "documentary": 99,
+        "drama": 18, "dramatic": 18, "family": 10751, "fantasy": 14,
+        "history": 36, "historical": 36, "horror": 27, "music": 10402,
+        "musical": 10402, "mystery": 9648, "romance": 10749, "romantic": 10749,
+        "science fiction": 878, "sci-fi": 878, "scifi": 878,
         "thriller": 53, "war": 10752, "western": 37
     };
 
@@ -358,6 +359,67 @@ app.post("/api/recommend", requireAuthApi, async (req, res) => {
         return results;
     }
 
+    // Last-resort AI step: only used when genre/actor/theme/title search all find nothing.
+    // The AI's job is ONLY to translate a tricky query (like "a movie where the hero dies")
+    // into TMDB-searchable genres/keywords — it never names actual movies itself,
+    // so results still always come from real TMDB data, never invented by the AI.
+    async function aiAssistedFallback(text, eraFilter) {
+        if (!GROQ_API_KEY) return [];
+
+        const genreList = [...new Set(Object.keys(GENRE_MAP))].join(", ");
+        const systemPrompt = `You interpret movie search queries for a search engine. You NEVER name specific movies. Respond ONLY with JSON:
+{ "genres": ["genre1"], "keywords": ["short search phrase"] }
+
+Rules:
+- "genres" may ONLY contain values from: ${genreList}. Use only if clearly relevant. Empty array if none fit.
+- "keywords" should contain 1-3 short (2-5 word) phrases suitable for searching a movie theme/plot-tag database (e.g. "a movie where the hero dies" -> ["character death", "tragic ending"]). Empty array if nothing fits.`;
+
+        try {
+            const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${GROQ_API_KEY.trim()}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    model: "llama-3.3-70b-versatile",
+                    messages: [
+                        { role: "system", content: systemPrompt },
+                        { role: "user", content: text }
+                    ],
+                    temperature: 0.2,
+                    response_format: { type: "json_object" }
+                })
+            });
+            if (!response.ok) return [];
+
+            const data = await response.json();
+            const parsed = JSON.parse(data.choices?.[0]?.message?.content || "{}");
+            const genres = Array.isArray(parsed.genres) ? parsed.genres : [];
+            const keywords = Array.isArray(parsed.keywords) ? parsed.keywords : [];
+
+            // Try suggested genres first
+            if (genres.length > 0) {
+                const ids = genres.map(g => GENRE_MAP[g.toLowerCase()]).filter(Boolean);
+                if (ids.length > 0) {
+                    const results = await fetchByGenres(ids, eraFilter);
+                    if (results.length > 0) return results;
+                }
+            }
+
+            // Then try suggested thematic keywords
+            for (const kw of keywords) {
+                const results = await fetchByKeyword(kw);
+                if (results.length > 0) return results;
+            }
+
+            return [];
+        } catch (err) {
+            console.error("aiAssistedFallback error:", err);
+            return [];
+        }
+    }
+
     try {
         const rawText = (description || mood || genre || "").trim();
         const eraFilter = buildEraFilter(era);
@@ -400,7 +462,13 @@ app.post("/api/recommend", requireAuthApi, async (req, res) => {
                 results = movieData.results || [];
             }
 
-            // Priority 5: last resort — generic popular movies
+            // Priority 5: AI last resort — only reached if nothing above matched anything.
+            // Handles tricky plot/mood queries like "a movie where the hero dies"
+            if (results.length === 0) {
+                results = await aiAssistedFallback(rawText, eraFilter);
+            }
+
+            // Priority 6: absolute last resort — generic popular movies
             if (results.length === 0) {
                 const discoverRes = await fetch(
                     `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc`
