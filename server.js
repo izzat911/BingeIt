@@ -182,95 +182,61 @@ app.get("/api/movie/:id", requireAuthApi, async (req, res) => {
 
 app.post("/api/recommend", requireAuthApi, async (req, res) => {
     const { description, genre, mood, era, length } = req.body;
-    const GROQ_API_KEY = process.env.GROQ_API_KEY;
 
-    // Helper to generate dynamic backup recommendations via TMDB
-    async function getTmdbFallback() {
-        if (!TMDB_API_KEY) return [];
-        try {
-            const queryText = (description || mood || genre || "popular").trim();
-            const queryUrl = description 
-                ? `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(queryText)}`
-                : `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc`;
-            
-            const tmdbRes = await fetch(queryUrl);
-            const tmdbData = await tmdbRes.json();
-            return (tmdbData.results || []).slice(0, 6).map(m => ({
-                title: m.title,
-                year: (m.release_date || "").split("-")[0],
-                genre: genre || "Movie",
-                reason: m.overview ? m.overview.slice(0, 110) + "..." : "Matches your requested criteria."
-            }));
-        } catch (e) {
-            console.error("TMDB Fallback Error:", e);
-            return [];
-        }
+    if (!TMDB_API_KEY) {
+        return res.status(500).json({ error: "Server is missing a TMDB_API_KEY." });
     }
-
-    if (!GROQ_API_KEY) {
-        console.error("GROQ_API_KEY missing. Returning TMDB recommendations.");
-        const fallback = await getTmdbFallback();
-        return res.json({ recommendations: fallback });
-    }
-
-    const filterLines = [];
-    if (genre) filterLines.push(`Genre: ${genre}`);
-    if (mood) filterLines.push(`Mood: ${mood}`);
-    if (era) filterLines.push(`Era: ${era}`);
-    if (length) filterLines.push(`Preferred length: ${length}`);
-
-    const userPrompt = `
-Recommend exactly 6 real movies fitting these criteria:
-${description ? `Description: "${description}"` : ""}
-${filterLines.length ? `Filters:\n${filterLines.join("\n")}` : ""}
-
-Respond ONLY with valid JSON using this exact structure:
-{
-  "recommendations": [
-    { "title": "Movie Title", "year": "2010", "genre": "Sci-Fi", "reason": "Short tailored reason." }
-  ]
-}
-`.trim();
 
     try {
-        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${GROQ_API_KEY.trim()}`,
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                model: "llama-3.3-70b-versatile",
-                messages: [
-                    { role: "system", content: "You are a movie recommendation assistant. Always output valid JSON only." },
-                    { role: "user", content: userPrompt }
-                ],
-                temperature: 0.7,
-                response_format: { type: "json_object" }
-            })
-        });
+        // Build the search text from whatever the user gave us
+        const searchText = (description || mood || genre || "").trim();
 
+        let url;
+        if (searchText) {
+            url = `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(searchText)}`;
+        } else {
+            url = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc`;
+        }
+
+        // Optional year filter based on era
+        if (era) {
+            const eraMap = {
+                "2020s": "2020-01-01,2029-12-31",
+                "2010s": "2010-01-01,2019-12-31",
+                "2000s": "2000-01-01,2009-12-31",
+                "1990s": "1990-01-01,1999-12-31",
+                "1980s": "1980-01-01,1989-12-31"
+            };
+            // Only apply when using discover (search endpoint doesn't support date range filters)
+            if (!searchText && eraMap[era]) {
+                const [gte, lte] = eraMap[era].split(",");
+                url += `&primary_release_date.gte=${gte}&primary_release_date.lte=${lte}`;
+            }
+        }
+
+        const response = await fetch(url);
         if (!response.ok) {
-            const errBody = await response.text();
-            console.error("Groq API error response:", response.status, errBody);
-            const fallback = await getTmdbFallback();
-            return res.json({ recommendations: fallback });
+            return res.status(502).json({ error: "Movie database returned an error." });
         }
 
         const data = await response.json();
-        const rawText = data.choices?.[0]?.message?.content || "";
-        const parsed = JSON.parse(rawText);
+        let results = data.results || [];
 
-        if (parsed.recommendations && Array.isArray(parsed.recommendations)) {
-            return res.json(parsed);
-        }
+        // Filter by minimum vote count so we get real, known movies (avoids obscure junk)
+        results = results.filter(m => m.vote_count > 20);
 
-        const fallback = await getTmdbFallback();
-        return res.json({ recommendations: fallback });
+        const recommendations = results.slice(0, 6).map(m => ({
+            title: m.title,
+            year: (m.release_date || "").split("-")[0] || "N/A",
+            genre: genre || "Movie",
+            reason: m.overview ? m.overview.slice(0, 140) + (m.overview.length > 140 ? "..." : "") : "Popular pick matching your search."
+        }));
+
+        res.json({ recommendations });
+
     } catch (err) {
-        console.error("Recommend route caught exception:", err);
-        const fallback = await getTmdbFallback();
-        return res.json({ recommendations: fallback });
+        console.error("Recommend route error:", err);
+        res.status(500).json({ error: "Something went wrong getting recommendations." });
     }
 });
 const PORT = process.env.PORT || 3000;
