@@ -199,12 +199,15 @@ app.post("/api/recommend", requireAuthApi, async (req, res) => {
         "western": 37, "westerns": 37
     };
 
-    function findGenreId(text) {
+    function findGenreIds(text) {
         const lower = text.toLowerCase();
+        const matchedIds = new Set();
         for (const [keyword, id] of Object.entries(GENRE_MAP)) {
-            if (lower.includes(keyword)) return id;
+            // match whole words only, so "drama" doesn't match inside "dramatic", etc.
+            const re = new RegExp(`\\b${keyword}\\b`, "i");
+            if (re.test(lower)) matchedIds.add(id);
         }
-        return null;
+        return Array.from(matchedIds);
     }
 
     async function discoverByGenre(genreId, eraFilter) {
@@ -235,11 +238,18 @@ app.post("/api/recommend", requireAuthApi, async (req, res) => {
         let matchedGenreLabel = null;
 
         if (rawText) {
-            // Priority 1: does the text match a known genre? (e.g. "crime", "action", "romantic")
-            const genreId = findGenreId(rawText);
-            if (genreId) {
-                results = await discoverByGenre(genreId, eraFilter);
-                matchedGenreLabel = Object.keys(GENRE_MAP).find(k => GENRE_MAP[k] === genreId);
+            // Priority 1: does the text match one or more known genres? (e.g. "family drama", "action")
+            const genreIds = findGenreIds(rawText);
+            if (genreIds.length > 0) {
+                results = await discoverByGenre(genreIds.join(","), eraFilter);
+                matchedGenreLabel = Object.keys(GENRE_MAP)
+                    .filter(k => genreIds.includes(GENRE_MAP[k]))
+                    .join(" / ");
+
+                // If combining genres was too narrow and returned nothing, fall back to just the first genre
+                if (results.length === 0 && genreIds.length > 1) {
+                    results = await discoverByGenre(genreIds[0], eraFilter);
+                }
             }
 
             // Priority 2: does the text match a real actor/director name?
