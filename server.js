@@ -188,39 +188,48 @@ app.post("/api/recommend", requireAuthApi, async (req, res) => {
     }
 
     try {
-        const searchText = (description || mood || genre || "").trim();
+        const rawText = (description || mood || genre || "").trim();
+
+        // Strip common filler words so "shahrukh khan movies" -> "shahrukh khan"
+        // This makes person-name matching much more reliable.
+        const cleanedForPerson = rawText
+            .replace(/\b(movies?|films?|shows?|series|please|recommend|suggest)\b/gi, "")
+            .replace(/\s+/g, " ")
+            .trim();
+
         let results = [];
 
-        if (searchText) {
-            // Step 1: try searching for a matching person (actor/director)
-            const personRes = await fetch(
-                `https://api.themoviedb.org/3/search/person?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(searchText)}`
-            );
-            const personData = await personRes.json();
-
-            if (personData.results && personData.results.length > 0) {
-                // Found a matching person — pull their most popular movies
-                const personId = personData.results[0].id;
-                const creditsRes = await fetch(
-                    `https://api.themoviedb.org/3/person/${personId}/movie_credits?api_key=${TMDB_API_KEY}`
+        if (rawText) {
+            // Step 1: try searching for a matching person (actor/director) using the cleaned name
+            if (cleanedForPerson) {
+                const personRes = await fetch(
+                    `https://api.themoviedb.org/3/search/person?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(cleanedForPerson)}`
                 );
-                const creditsData = await creditsRes.json();
-                const cast = creditsData.cast || [];
-                results = cast
-                    .filter(m => m.vote_count > 20 && m.poster_path)
-                    .sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+                const personData = await personRes.json();
+
+                if (personData.results && personData.results.length > 0) {
+                    const personId = personData.results[0].id;
+                    const creditsRes = await fetch(
+                        `https://api.themoviedb.org/3/person/${personId}/movie_credits?api_key=${TMDB_API_KEY}`
+                    );
+                    const creditsData = await creditsRes.json();
+                    const cast = creditsData.cast || [];
+                    results = cast
+                        .filter(m => m.vote_count > 20 && m.poster_path)
+                        .sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+                }
             }
 
-            // Step 2: if no person match (or no good results), fall back to title search
+            // Step 2: if no person match, fall back to title search using the original text
             if (results.length === 0) {
                 const movieRes = await fetch(
-                    `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(searchText)}`
+                    `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(rawText)}`
                 );
                 const movieData = await movieRes.json();
                 results = (movieData.results || []).filter(m => m.vote_count > 20);
             }
 
-            // Step 3: if still nothing, fall back to popular movies matching genre/era loosely
+            // Step 3: still nothing? Fall back to popular movies rather than an empty error
             if (results.length === 0) {
                 const discoverRes = await fetch(
                     `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc`
