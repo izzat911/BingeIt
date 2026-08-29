@@ -188,42 +188,68 @@ app.post("/api/recommend", requireAuthApi, async (req, res) => {
     }
 
     try {
-        // Build the search text from whatever the user gave us
         const searchText = (description || mood || genre || "").trim();
+        let results = [];
 
-        let url;
         if (searchText) {
-            url = `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(searchText)}`;
-        } else {
-            url = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc`;
-        }
+            // Step 1: try searching for a matching person (actor/director)
+            const personRes = await fetch(
+                `https://api.themoviedb.org/3/search/person?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(searchText)}`
+            );
+            const personData = await personRes.json();
 
-        // Optional year filter based on era
-        if (era) {
-            const eraMap = {
-                "2020s": "2020-01-01,2029-12-31",
-                "2010s": "2010-01-01,2019-12-31",
-                "2000s": "2000-01-01,2009-12-31",
-                "1990s": "1990-01-01,1999-12-31",
-                "1980s": "1980-01-01,1989-12-31"
-            };
-            // Only apply when using discover (search endpoint doesn't support date range filters)
-            if (!searchText && eraMap[era]) {
-                const [gte, lte] = eraMap[era].split(",");
-                url += `&primary_release_date.gte=${gte}&primary_release_date.lte=${lte}`;
+            if (personData.results && personData.results.length > 0) {
+                // Found a matching person — pull their most popular movies
+                const personId = personData.results[0].id;
+                const creditsRes = await fetch(
+                    `https://api.themoviedb.org/3/person/${personId}/movie_credits?api_key=${TMDB_API_KEY}`
+                );
+                const creditsData = await creditsRes.json();
+                const cast = creditsData.cast || [];
+                results = cast
+                    .filter(m => m.vote_count > 20 && m.poster_path)
+                    .sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
             }
+
+            // Step 2: if no person match (or no good results), fall back to title search
+            if (results.length === 0) {
+                const movieRes = await fetch(
+                    `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(searchText)}`
+                );
+                const movieData = await movieRes.json();
+                results = (movieData.results || []).filter(m => m.vote_count > 20);
+            }
+
+            // Step 3: if still nothing, fall back to popular movies matching genre/era loosely
+            if (results.length === 0) {
+                const discoverRes = await fetch(
+                    `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc`
+                );
+                const discoverData = await discoverRes.json();
+                results = (discoverData.results || []).filter(m => m.vote_count > 20);
+            }
+        } else {
+            // No search text — just use filters (genre/era) against discover
+            let url = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc`;
+
+            if (era) {
+                const eraMap = {
+                    "2020s": "2020-01-01,2029-12-31",
+                    "2010s": "2010-01-01,2019-12-31",
+                    "2000s": "2000-01-01,2009-12-31",
+                    "1990s": "1990-01-01,1999-12-31",
+                    "1980s": "1980-01-01,1989-12-31"
+                };
+                if (eraMap[era]) {
+                    const [gte, lte] = eraMap[era].split(",");
+                    url += `&primary_release_date.gte=${gte}&primary_release_date.lte=${lte}`;
+                }
+            }
+
+            const discoverRes = await fetch(url);
+            const discoverData = await discoverRes.json();
+            results = (discoverData.results || []).filter(m => m.vote_count > 20);
         }
-
-        const response = await fetch(url);
-        if (!response.ok) {
-            return res.status(502).json({ error: "Movie database returned an error." });
-        }
-
-        const data = await response.json();
-        let results = data.results || [];
-
-        // Filter by minimum vote count so we get real, known movies (avoids obscure junk)
-        results = results.filter(m => m.vote_count > 20);
 
         const recommendations = results.slice(0, 6).map(m => ({
             title: m.title,
