@@ -221,51 +221,141 @@ app.post("/api/recommend", requireAuthApi, async (req, res) => {
     }
 
     async function fetchPersonMovies(name) {
-        const personRes = await fetch(
-            `https://api.themoviedb.org/3/search/person?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(name)}`
-        );
-        const personData = await personRes.json();
-        if (!personData.results || personData.results.length === 0) return [];
+        async function tryPersonSearch(query) {
+            const personRes = await fetch(
+                `https://api.themoviedb.org/3/search/person?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}`
+            );
+            const personData = await personRes.json();
+            return (personData.results && personData.results.length > 0) ? personData.results[0] : null;
+        }
 
-        const personId = personData.results[0].id;
+        // Attempt 1: the name exactly as typed
+        let person = await tryPersonSearch(name);
+
+        // Attempt 2: if that fails, try inserting a space at each position within the first word.
+        // This catches cases like "Shahrukh Khan" -> TMDB's actual entry "Shah Rukh Khan"
+        if (!person) {
+            const words = name.trim().split(/\s+/);
+            const firstWord = words[0];
+            const rest = words.slice(1).join(" ");
+
+            for (let i = 2; i < firstWord.length - 1 && !person; i++) {
+                const variant = `${firstWord.slice(0, i)} ${firstWord.slice(i)}${rest ? " " + rest : ""}`;
+                person = await tryPersonSearch(variant);
+            }
+        }
+
+        if (!person) return [];
+
         const creditsRes = await fetch(
-            `https://api.themoviedb.org/3/person/${personId}/movie_credits?api_key=${TMDB_API_KEY}`
+            `https://api.themoviedb.org/3/person/${person.id}/movie_credits?api_key=${TMDB_API_KEY}`
         );
         const creditsData = await creditsRes.json();
-        const cast = creditsData.cast || [];
-        return cast
-            .filter(m => m.vote_count > 20 && m.poster_path)
-            .sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+        const cast = (creditsData.cast || []).filter(m => m.poster_path);
+
+        // Adaptive quality bar: try strict first, but progressively relax if that
+        // wipes out everything. This matters for cinema with naturally lower TMDB
+        // vote counts (e.g. much of Bollywood, regional/international films) so we
+        // don't lose real results just because western audiences vote less on them.
+        const thresholds = [50, 20, 5, 0];
+        for (const minVotes of thresholds) {
+            const filtered = cast.filter(m => m.vote_count >= minVotes);
+            if (filtered.length > 0) {
+                return filtered.sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
+            }
+        }
+        return [];
     }
 
     async function fetchByGenres(ids, eraFilter) {
-        let url = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${ids.join(",")}&sort_by=vote_average.desc&vote_count.gte=500${eraFilter}`;
-        let r = await fetch(url);
-        let d = await r.json();
-        let results = (d.results || []).filter(m => m.vote_count > 100);
+        const voteThresholds = [500, 100, 20, 0];
 
-        if (results.length === 0 && ids.length > 1) {
-            url = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${ids[0]}&sort_by=vote_average.desc&vote_count.gte=500${eraFilter}`;
-            r = await fetch(url);
-            d = await r.json();
-            results = (d.results || []).filter(m => m.vote_count > 100);
+        for (const minVotes of voteThresholds) {
+            let url = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${ids.join(",")}&sort_by=vote_average.desc&vote_count.gte=${minVotes}${eraFilter}`;
+            let r = await fetch(url);
+            let d = await r.json();
+            let results = d.results || [];
+            if (results.length > 0) return results;
         }
-        return results;
+
+        // Combining all genres together found nothing at any threshold — relax to just the first genre
+        if (ids.length > 1) {
+            for (const minVotes of voteThresholds) {
+                let url = `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&with_genres=${ids[0]}&sort_by=vote_average.desc&vote_count.gte=${minVotes}${eraFilter}`;
+                let r = await fetch(url);
+                let d = await r.json();
+                let results = d.results || [];
+                if (results.length > 0) return results;
+            }
+        }
+        return [];
+    }
+
+    const KEYWORD_SYNONYMS = {
+        "true events": "true story", "real events": "true story",
+        "true story": "true story", "real life": "true story",
+        "real story": "true story", "actual events": "true story",
+        "based on a true story": "true story",
+        "time travel": "time travel", "time traveling": "time travel",
+        "artificial intelligence": "artificial intelligence (a.i.)",
+        "haunted house": "haunted house", "serial killer": "serial killer",
+        "single mother": "single mother", "single father": "single father",
+        "down syndrome": "down syndrome"
+    };
+
+    const STOPWORDS = new Set([
+        "movies", "movie", "films", "film", "shows", "show", "series",
+        "please", "recommend", "suggest", "based", "on", "about", "that",
+        "are", "is", "the", "a", "an", "of", "with", "involving", "featuring", "me"
+    ]);
+
+    function cleanForKeyword(text) {
+        return text
+            .toLowerCase()
+            .split(/\s+/)
+            .filter(w => !STOPWORDS.has(w))
+            .join(" ")
+            .trim();
     }
 
     async function fetchByKeyword(text) {
-        const keywordRes = await fetch(
-            `https://api.themoviedb.org/3/search/keyword?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(text)}`
-        );
-        const keywordData = await keywordRes.json();
-        if (!keywordData.results || keywordData.results.length === 0) return [];
+        async function tryKeyword(query) {
+            if (!query) return [];
+            const keywordRes = await fetch(
+                `https://api.themoviedb.org/3/search/keyword?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(query)}`
+            );
+            const keywordData = await keywordRes.json();
+            if (!keywordData.results || keywordData.results.length === 0) return [];
 
-        const keywordId = keywordData.results[0].id;
-        const kwRes = await fetch(
-            `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&with_keywords=${keywordId}&sort_by=popularity.desc`
-        );
-        const kwData = await kwRes.json();
-        return (kwData.results || []).filter(m => m.vote_count > 10);
+            const keywordId = keywordData.results[0].id;
+            const kwRes = await fetch(
+                `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&with_keywords=${keywordId}&sort_by=popularity.desc`
+            );
+            const kwData = await kwRes.json();
+            return kwData.results || [];
+        }
+
+        const cleaned = cleanForKeyword(text);
+
+        // Attempt 1: cleaned phrase as-is
+        let results = await tryKeyword(cleaned);
+        if (results.length > 0) return results;
+
+        // Attempt 2: check known synonym phrases contained in the cleaned text
+        for (const [phrase, mapped] of Object.entries(KEYWORD_SYNONYMS)) {
+            if (cleaned.includes(phrase)) {
+                results = await tryKeyword(mapped);
+                if (results.length > 0) return results;
+            }
+        }
+
+        // Attempt 3: try progressively shorter versions (drop the first word each time)
+        const words = cleaned.split(" ").filter(Boolean);
+        for (let i = 1; i < words.length && results.length === 0; i++) {
+            results = await tryKeyword(words.slice(i).join(" "));
+        }
+
+        return results;
     }
 
     try {
@@ -307,7 +397,7 @@ app.post("/api/recommend", requireAuthApi, async (req, res) => {
                     `https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&query=${encodeURIComponent(rawText)}`
                 );
                 const movieData = await movieRes.json();
-                results = (movieData.results || []).filter(m => m.vote_count > 20);
+                results = movieData.results || [];
             }
 
             // Priority 5: last resort — generic popular movies
@@ -316,7 +406,7 @@ app.post("/api/recommend", requireAuthApi, async (req, res) => {
                     `https://api.themoviedb.org/3/discover/movie?api_key=${TMDB_API_KEY}&sort_by=popularity.desc`
                 );
                 const discoverData = await discoverRes.json();
-                results = (discoverData.results || []).filter(m => m.vote_count > 20);
+                results = discoverData.results || [];
             }
         } else {
             // No typed text — use Genre/Era dropdowns directly
@@ -326,7 +416,7 @@ app.post("/api/recommend", requireAuthApi, async (req, res) => {
 
             const discoverRes = await fetch(url);
             const discoverData = await discoverRes.json();
-            results = (discoverData.results || []).filter(m => m.vote_count > 20);
+            results = discoverData.results || [];
         }
 
         const recommendations = results.slice(0, 6).map(m => ({
