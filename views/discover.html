@@ -1,11 +1,13 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BingeIt - Discover</title>
+    <title>BingeIt - Discover Movies</title>
 
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
 
     <link rel="stylesheet" href="../public/css/style.css">
@@ -15,27 +17,27 @@
 
     <header>
         <nav class="navbar">
-            <div class="logo">
+            <a href="index.html" class="logo">
                 <img src="../public/images/camera-svgrepo-com.svg.png" alt="BingeIt Logo">
                 <h2>Binge<span>It</span></h2>
-            </div>
+            </a>
             <ul class="nav-links">
                 <li><a href="index.html">Home</a></li>
                 <li><a href="discover.html" class="active">Discover</a></li>
-                <li><a href="ai.html">AI</a></li>
-               <a href="login.html" class="login-btn" id="login-nav-btn">Login</a>
+                <li><a href="ai.html">AI Matcher</a></li>
+                <li><a href="login.html" class="login-btn" id="login-nav-btn">Login</a></li>
             </ul>
         </nav>
     </header>
 
     <section class="discover-hero">
         <h1>Discover <span>Movies</span></h1>
-        <p>Search by title or browse by genre.</p>
+        <p>Explore thousands of films by title, genre, or keyword.</p>
 
         <div class="discover-controls">
             <div class="search-bar">
                 <i class="fa-solid fa-magnifying-glass"></i>
-                <input type="text" id="search-input" placeholder="Search for a movie...">
+                <input type="text" id="search-input" placeholder="Search movies by title, franchise, or keywords...">
             </div>
 
             <select id="genre-filter">
@@ -62,14 +64,14 @@
         <div id="discover-error" class="discover-error" hidden></div>
 
         <div id="discover-grid" class="discover-grid"></div>
-        <button id="load-more-btn" class="load-more-btn" hidden>Load More</button>
+        <button id="load-more-btn" class="load-more-btn" hidden>Load More Movies</button>
 
         <div id="discover-empty" class="discover-empty" hidden>
-            <p>No movies found. Try a different search or genre.</p>
+            <p>No movies found matching your filters. Try a different search query or genre.</p>
         </div>
     </section>
 
     <script src="../public/js/discover.js"></script>
-     <script src="../public/js/nav-auth.js"></script>
+    <script src="../public/js/nav-auth.js"></script>
 </body>
 </html>

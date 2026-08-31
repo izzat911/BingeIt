@@ -1,4 +1,4 @@
-﻿const searchInput = document.getElementById("search-input");
+const searchInput = document.getElementById("search-input");
 const genreFilter = document.getElementById("genre-filter");
 const grid = document.getElementById("discover-grid");
 const loadingEl = document.getElementById("discover-loading");
@@ -56,17 +56,28 @@ function renderMovies(movies, append) {
 
     const cardsHtml = movies.map(movie => {
         const posterUrl = movie.poster_path
-            ? `https://image.tmdb.org/t/p/w300${movie.poster_path}`
+            ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
             : "https://via.placeholder.com/300x450/17141f/9c98ab?text=No+Poster";
         const year = movie.release_date ? movie.release_date.slice(0, 4) : "";
-        const rating = movie.vote_average ? movie.vote_average.toFixed(1) : "N/A";
+        const rating = movie.vote_average ? Number(movie.vote_average.toFixed(1)) : null;
+
+        const ratingBadge = rating
+            ? `<span class="discover-rating"><i class="fa-solid fa-star"></i> ${rating}</span>`
+            : "";
 
         return `
             <a href="details.html?id=${movie.id}" class="discover-card">
-                <img src="${posterUrl}" alt="${escapeHtml(movie.title)}" loading="lazy">
+                <div class="discover-card-poster-wrap">
+                    <img src="${posterUrl}" alt="${escapeHtml(movie.title)}" loading="lazy">
+                    <div class="discover-poster-overlay">
+                        ${ratingBadge}
+                    </div>
+                </div>
                 <div class="discover-card-info">
                     <h3>${escapeHtml(movie.title)}</h3>
-                    <span>Rating: ${rating} ${year ? "- " + year : ""}</span>
+                    <div class="discover-meta-row">
+                        ${year ? `<span class="discover-year">${year}</span>` : ""}
+                    </div>
                 </div>
             </a>
         `;

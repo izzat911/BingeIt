@@ -1,31 +1,46 @@
-﻿:root {
-    --det-bg: #0d0b14;
-    --det-card-bg: #17141f;
-    --det-border: #2a2536;
+/* ==========================================================================
+   BINGEIT DESIGN SYSTEM - DETAILS MODULE
+   Cinematic Hero Layout, Cast Cards & Metadata Badges
+   ========================================================================== */
+
+:root {
+    --det-bg: #07070b;
+    --det-surface: #0e0d16;
+    --det-card-bg: rgba(20, 17, 33, 0.75);
+    --det-border: rgba(255, 255, 255, 0.08);
     --det-purple: #8b5cf6;
     --det-purple-light: #a78bfa;
-    --det-text: #f1f0f5;
-    --det-text-muted: #9c98ab;
+    --det-purple-bright: #c084fc;
+    --det-text: #f8fafc;
+    --det-text-muted: #94a3b8;
+    --det-text-dim: #64748b;
+    --det-gold: #f59e0b;
 }
 
 body {
     background: var(--det-bg);
+    color: var(--det-text);
+    font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 .details-loading {
     display: flex;
     justify-content: center;
-    padding: 100px 0;
+    padding: 120px 0;
 }
- .details-loading[hidden] { display: none; }
+
+.details-loading[hidden] {
+    display: none;
+}
 
 .spinner {
-    width: 36px;
-    height: 36px;
-    border: 3px solid var(--det-border);
+    width: 50px;
+    height: 50px;
+    border: 3.5px solid rgba(139, 92, 246, 0.2);
     border-top-color: var(--det-purple);
+    border-right-color: var(--det-purple-light);
     border-radius: 50%;
-    animation: spin 0.8s linear infinite;
+    animation: spin 0.85s cubic-bezier(0.65, 0, 0.35, 1) infinite;
 }
 
 @keyframes spin {
@@ -34,34 +49,56 @@ body {
 
 .details-error {
     max-width: 640px;
-    margin: 60px auto;
-    background: rgba(239, 68, 68, 0.1);
+    margin: 80px auto;
+    background: rgba(239, 68, 68, 0.12);
     border: 1px solid rgba(239, 68, 68, 0.3);
     color: #fca5a5;
-    padding: 16px 20px;
-    border-radius: 10px;
-    font-family: 'Inter', sans-serif;
-    font-size: 14px;
+    padding: 20px 24px;
+    border-radius: 16px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 15px;
     text-align: center;
+    backdrop-filter: blur(10px);
 }
 
 .details-content {
-    max-width: 1100px;
+    max-width: 1200px;
     margin: 0 auto;
-    padding: 40px 20px 80px;
+    padding: 30px 24px 100px;
 }
 
+/* Movie Showcase Hero Card */
 .details-hero {
     display: flex;
-    gap: 36px;
-    flex-wrap: wrap;
+    gap: 48px;
+    align-items: flex-start;
+    background: rgba(18, 15, 30, 0.8);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid var(--det-border);
+    border-radius: 28px;
+    padding: 40px;
+    box-shadow:
+        0 24px 60px rgba(0, 0, 0, 0.6),
+        0 0 0 1px rgba(255, 255, 255, 0.04),
+        0 0 40px rgba(139, 92, 246, 0.12);
 }
 
-.details-hero img {
-    width: 260px;
-    border-radius: 14px;
+.details-hero img#details-poster {
+    width: 300px;
+    border-radius: 20px;
     flex-shrink: 0;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    box-shadow:
+        0 16px 40px rgba(0, 0, 0, 0.6),
+        0 0 30px rgba(139, 92, 246, 0.2);
+    aspect-ratio: 2 / 3;
+    object-fit: cover;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: transform 0.3s ease;
+}
+
+.details-hero img#details-poster:hover {
+    transform: scale(1.02);
 }
 
 .details-info {
@@ -71,76 +108,117 @@ body {
 }
 
 .details-info h1 {
-    font-family: 'Poppins', sans-serif;
-    font-size: 32px;
-    font-weight: 600;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 40px;
+    font-weight: 700;
     margin-bottom: 8px;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    color: #ffffff;
 }
 
 .details-tagline {
     color: var(--det-purple-light);
-    font-family: 'Inter', sans-serif;
+    font-family: 'Plus Jakarta Sans', sans-serif;
     font-style: italic;
-    font-size: 14px;
-    margin-bottom: 16px;
+    font-size: 16px;
+    margin-bottom: 22px;
+    font-weight: 500;
 }
 
+/* Metadata Row */
 .details-meta {
     display: flex;
-    gap: 18px;
-    margin-bottom: 16px;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 22px;
     color: var(--det-text-muted);
-    font-family: 'Inter', sans-serif;
+    font-family: 'Plus Jakarta Sans', sans-serif;
     font-size: 14px;
+    align-items: center;
 }
 
+.details-meta span {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--det-border);
+    padding: 6px 14px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    font-weight: 600;
+}
+
+#details-rating {
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.35);
+    color: var(--det-gold);
+    font-weight: 700;
+    font-family: 'Space Grotesk', sans-serif;
+}
+
+/* Genre Pills */
 .details-genres {
     display: flex;
-    gap: 8px;
+    gap: 10px;
     flex-wrap: wrap;
-    margin-bottom: 20px;
+    margin-bottom: 26px;
 }
 
 .details-genres span {
-    background: rgba(139, 92, 246, 0.15);
+    background: rgba(139, 92, 246, 0.14);
+    border: 1px solid rgba(139, 92, 246, 0.3);
     color: var(--det-purple-light);
-    padding: 5px 14px;
+    padding: 6px 16px;
     border-radius: 999px;
-    font-size: 12px;
-    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    font-family: 'Space Grotesk', sans-serif;
+    letter-spacing: 0.01em;
 }
 
 .details-overview {
-    font-family: 'Inter', sans-serif;
-    font-size: 15px;
-    line-height: 1.7;
-    color: var(--det-text-muted);
-    max-width: 640px;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 16px;
+    line-height: 1.8;
+    color: #cbd5e1;
+    max-width: 720px;
+    font-weight: 400;
 }
 
+/* Cast Section */
 .details-cast-section {
-    margin-top: 50px;
+    margin-top: 60px;
 }
 
 .details-cast-section h2 {
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Space Grotesk', sans-serif;
     color: var(--det-text);
-    font-size: 22px;
-    margin-bottom: 20px;
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 24px;
 }
 
 .details-cast {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 20px;
 }
 
 .cast-card {
-    background: var(--det-card-bg);
+    background: rgba(20, 17, 33, 0.75);
     border: 1px solid var(--det-border);
-    border-radius: 10px;
+    border-radius: 16px;
     overflow: hidden;
     text-align: center;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+    transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.cast-card:hover {
+    transform: translateY(-5px);
+    border-color: rgba(168, 85, 247, 0.45);
+    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.5), 0 0 20px rgba(139, 92, 246, 0.2);
 }
 
 .cast-card img {
@@ -149,38 +227,57 @@ body {
     object-fit: cover;
     display: block;
     background: var(--det-border);
+    transition: transform 0.4s ease;
+}
+
+.cast-card:hover img {
+    transform: scale(1.06);
 }
 
 .cast-card p {
-    padding: 8px 6px;
-    font-family: 'Inter', sans-serif;
-    font-size: 12px;
+    padding: 12px 10px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
     color: var(--det-text);
+    line-height: 1.35;
 }
 
 .cast-card p span {
     display: block;
+    font-family: 'Plus Jakarta Sans', sans-serif;
     color: var(--det-text-muted);
-    font-size: 11px;
-    margin-top: 2px;
+    font-size: 11.5px;
+    font-weight: 400;
+    margin-top: 4px;
 }
 
-.nav-links a.active {
-    color: var(--det-purple-light);
-}
-
-.nav-links .login-btn {
-    font-weight: 700;
-}
-
-@media (max-width: 600px) {
+/* Responsive */
+@media (max-width: 880px) {
     .details-hero {
         flex-direction: column;
         align-items: center;
         text-align: center;
+        padding: 30px 20px;
+        gap: 30px;
+    }
+
+    .details-hero img#details-poster {
+        width: 240px;
     }
 
     .details-meta, .details-genres {
         justify-content: center;
+    }
+
+    .details-info h1 {
+        font-size: 32px;
+    }
+}
+
+@media (max-width: 500px) {
+    .details-cast {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
     }
 }

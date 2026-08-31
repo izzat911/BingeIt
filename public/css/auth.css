@@ -1,3 +1,10 @@
+/* ==========================================================================
+   BINGEIT DESIGN SYSTEM - AUTHENTICATION MODULE
+   Cinematic Ambient Glow, Frosted Glass Card & Micro-Interactions
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap');
+
 * {
     margin: 0;
     padding: 0;
@@ -5,342 +12,264 @@
 }
 
 body {
-    font-family: Arial, Helvetica, sans-serif;
-    background: #09090f;
-    color: #ffffff;
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #07070b;
+    color: #f8fafc;
     min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
 }
 
 .auth-page {
     min-height: 100vh;
-
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-
     padding: 40px 20px;
-
+    position: relative;
     background:
-        radial-gradient(
-            circle at 15% 20%,
-            rgba(124, 58, 237, 0.20),
-            transparent 30%
-        ),
-        radial-gradient(
-            circle at 85% 80%,
-            rgba(168, 85, 247, 0.15),
-            transparent 30%
-        ),
-        #09090f;
+        radial-gradient(ellipse 70% 60% at 50% 10%, rgba(124, 58, 237, 0.22) 0%, transparent 60%),
+        radial-gradient(circle at 10% 80%, rgba(217, 70, 239, 0.1) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(56, 189, 248, 0.08) 0%, transparent 40%),
+        #07070b;
 }
 
-
-/* =========================
-   LOGO
-========================= */
-
+/* ==========================================================================
+   BRAND LOGO
+   ========================================================================== */
 .auth-logo {
     display: flex;
     align-items: center;
-    gap: 9px;
+    gap: 12px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 32px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    margin-bottom: 32px;
+    text-decoration: none;
+    color: #ffffff;
+}
 
-    font-size: 30px;
+.auth-logo img {
+    width: 38px;
+    height: 38px;
+    object-fit: contain;
+    filter: drop-shadow(0 0 14px rgba(139, 92, 246, 0.7));
+}
+
+.auth-logo span.brand-text span {
+    background: linear-gradient(135deg, #a78bfa 0%, #c084fc 50%, #f472b6 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
     font-weight: 800;
-
-    margin-bottom: 28px;
 }
 
-.auth-logo span:last-child span {
-    color: #914cff;
-}
-
-.logo-icon {
-    font-size: 27px;
-}
-
-
-/* =========================
+/* ==========================================================================
    AUTH CARD
-========================= */
-
+   ========================================================================== */
 .auth-card {
     width: 100%;
-    max-width: 440px;
-
-    padding: 38px;
-
-    background: rgba(24, 24, 32, 0.92);
-
-    border: 1px solid rgba(255, 255, 255, 0.08);
-
-    border-radius: 22px;
-
+    max-width: 460px;
+    padding: 42px 38px;
+    background: rgba(18, 15, 30, 0.82);
+    backdrop-filter: blur(28px) saturate(180%);
+    -webkit-backdrop-filter: blur(28px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 26px;
     box-shadow:
-        0 25px 70px rgba(0, 0, 0, 0.45),
-        0 0 50px rgba(124, 58, 237, 0.08);
-
-    backdrop-filter: blur(12px);
+        0 24px 60px rgba(0, 0, 0, 0.65),
+        0 0 0 1px rgba(255, 255, 255, 0.04),
+        0 0 45px rgba(139, 92, 246, 0.15);
+    transition: border-color 0.25s ease, box-shadow 0.25s ease;
 }
 
-
-/* =========================
-   HEADING
-========================= */
+.auth-card:focus-within {
+    border-color: rgba(168, 85, 247, 0.4);
+    box-shadow:
+        0 28px 70px rgba(0, 0, 0, 0.7),
+        0 0 0 1px rgba(168, 85, 247, 0.25),
+        0 0 50px rgba(139, 92, 246, 0.25);
+}
 
 .auth-card h1 {
-    font-size: 30px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 28px;
+    font-weight: 700;
     text-align: center;
-    margin-bottom: 10px;
+    letter-spacing: -0.03em;
+    margin-bottom: 8px;
+    color: #ffffff;
 }
 
 .auth-subtitle {
     text-align: center;
-    color: #a7a7b5;
-    font-size: 15px;
-    margin-bottom: 30px;
+    color: #94a3b8;
+    font-size: 14.5px;
+    margin-bottom: 32px;
 }
 
-
-/* =========================
-   INPUTS
-========================= */
-
+/* ==========================================================================
+   INPUT FIELDS
+   ========================================================================== */
 .input-group {
-    margin-bottom: 19px;
+    margin-bottom: 20px;
 }
 
 .input-group label {
     display: block;
-
-    font-size: 14px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 13.5px;
     font-weight: 600;
-
     margin-bottom: 8px;
-
-    color: #ddddE8;
+    color: #cbd5e1;
+    letter-spacing: -0.01em;
 }
 
 .input-group input {
     width: 100%;
-
-    padding: 14px 15px;
-
-    background: #14141d;
-
-    border: 1px solid #2c2c39;
-
-    border-radius: 10px;
-
+    padding: 14px 18px;
+    background: rgba(10, 8, 16, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    border-radius: 12px;
     color: #ffffff;
-
+    font-family: 'Plus Jakarta Sans', sans-serif;
     font-size: 15px;
-
     outline: none;
-
-    transition: 0.25s ease;
+    transition: all 0.2s ease;
 }
 
 .input-group input::placeholder {
-    color: #666674;
+    color: #64748b;
 }
 
 .input-group input:focus {
-    border-color: #914cff;
-
-    box-shadow:
-        0 0 0 3px rgba(145, 76, 255, 0.12);
+    border-color: #8b5cf6;
+    background: rgba(12, 10, 20, 0.95);
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.25);
 }
 
-
-/* =========================
+/* ==========================================================================
    FORM OPTIONS
-========================= */
-
+   ========================================================================== */
 .form-options {
     display: flex;
     justify-content: space-between;
     align-items: center;
-
-    margin: 5px 0 22px;
-
-    font-size: 13px;
+    margin: 6px 0 24px;
+    font-size: 13.5px;
 }
 
 .remember {
-    color: #a7a7b5;
-
+    color: #94a3b8;
     display: flex;
     align-items: center;
-    gap: 7px;
+    gap: 8px;
+    cursor: pointer;
+    user-select: none;
 }
 
-.remember input {
-    accent-color: #914cff;
+.remember input[type="checkbox"] {
+    accent-color: #8b5cf6;
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    cursor: pointer;
 }
 
-.form-options a {
-    color: #a875ff;
-    text-decoration: none;
-}
-
-.form-options a:hover {
-    text-decoration: underline;
-}
-
-
-/* =========================
-   MAIN BUTTON
-========================= */
-
+/* ==========================================================================
+   BUTTONS
+   ========================================================================== */
 .auth-button {
     width: 100%;
-
-    padding: 14px;
-
+    padding: 15px;
     border: none;
-    border-radius: 10px;
-
-    background: linear-gradient(
-        135deg,
-        #7c3aed,
-        #9b5cff
-    );
-
-    color: white;
-
-    font-size: 16px;
+    border-radius: 14px;
+    background: linear-gradient(135deg, #7c3aed 0%, #a855f7 50%, #c084fc 100%);
+    color: #ffffff;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 15.5px;
     font-weight: 700;
-
+    letter-spacing: -0.01em;
     cursor: pointer;
-
-    transition: 0.25s ease;
+    box-shadow: 0 6px 22px rgba(124, 58, 237, 0.4);
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .auth-button:hover {
+    background: linear-gradient(135deg, #6d28d9 0%, #9333ea 50%, #a855f7 100%);
+    box-shadow: 0 8px 28px rgba(139, 92, 246, 0.6);
     transform: translateY(-2px);
-
-    box-shadow:
-        0 10px 25px rgba(124, 58, 237, 0.35);
 }
 
-
-/* =========================
-   DIVIDER
-========================= */
-
-.divider {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-
-    margin: 25px 0;
-
-    color: #666674;
-
-    font-size: 13px;
+.auth-button:active {
+    transform: translateY(0) scale(0.99);
 }
 
-.divider::before,
-.divider::after {
-    content: "";
-
-    flex: 1;
-
-    height: 1px;
-
-    background: #2c2c39;
+.auth-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+    box-shadow: none;
 }
 
-
-/* =========================
-   GOOGLE BUTTON
-========================= */
-
-.google-button {
-    width: 100%;
-
-    padding: 13px;
-
-    background: transparent;
-
-    border: 1px solid #33333f;
-
+/* Error message styling */
+#auth-form-error {
+    background: rgba(239, 68, 68, 0.12);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #fca5a5 !important;
+    padding: 10px 14px;
     border-radius: 10px;
-
-    color: #ffffff;
-
-    font-size: 15px;
-    font-weight: 600;
-
-    cursor: pointer;
-
-    transition: 0.25s ease;
+    font-size: 13.5px !important;
+    margin-top: 16px !important;
 }
 
-.google-button:hover {
-    background: #1d1d27;
-    border-color: #555562;
-}
-
-
-/* =========================
-   SWITCH LOGIN / SIGNUP
-========================= */
-
+/* ==========================================================================
+   FOOTER & SWITCH
+   ========================================================================== */
 .switch-page {
     text-align: center;
-
-    margin-top: 25px;
-
-    color: #888896;
-
+    margin-top: 26px;
+    color: #94a3b8;
     font-size: 14px;
 }
 
 .switch-page a {
-    color: #a875ff;
-
+    color: #c084fc;
     text-decoration: none;
-
     font-weight: 700;
+    margin-left: 4px;
+    transition: color 0.2s ease;
 }
 
 .switch-page a:hover {
+    color: #e879f9;
     text-decoration: underline;
 }
 
-
-/* =========================
-   FOOTER TEXT
-========================= */
-
 .auth-footer {
-    margin-top: 25px;
-
-    color: #555562;
-
-    font-size: 12px;
-
+    margin-top: 28px;
+    color: #64748b;
+    font-size: 13px;
     text-align: center;
+    letter-spacing: 0.02em;
 }
 
-
-/* =========================
+/* ==========================================================================
    RESPONSIVE
-========================= */
-
+   ========================================================================== */
 @media (max-width: 500px) {
-
     .auth-card {
-        padding: 28px 22px;
+        padding: 30px 20px;
+        border-radius: 20px;
     }
 
     .auth-card h1 {
-        font-size: 25px;
+        font-size: 24px;
     }
 
     .auth-logo {
-        font-size: 26px;
+        font-size: 28px;
     }
 }

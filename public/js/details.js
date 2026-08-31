@@ -1,4 +1,4 @@
-﻿const params = new URLSearchParams(window.location.search);
+const params = new URLSearchParams(window.location.search);
 const movieId = params.get("id");
 
 const loadingEl = document.getElementById("details-loading");
@@ -43,7 +43,7 @@ function renderDetails(movie) {
     const year = movie.release_date ? movie.release_date.slice(0, 4) : "";
     const runtime = movie.runtime ? `${movie.runtime} min` : "";
 
-    document.getElementById("details-rating").textContent = `Rating: ${rating}`;
+    document.getElementById("details-rating").innerHTML = `<i class="fa-solid fa-star" style="color: #f59e0b; margin-right: 4px;"></i> ${rating}`;
     document.getElementById("details-year").textContent = year;
     document.getElementById("details-runtime").textContent = runtime;
 

@@ -1,4 +1,4 @@
-﻿const trendingGrid = document.getElementById("trending-grid");
+const trendingGrid = document.getElementById("trending-grid");
 
 if (trendingGrid) {
     loadTrending();
@@ -13,32 +13,32 @@ function loadTrending() {
         .then(data => renderTrending(data.movies || []))
         .catch(err => {
             console.error(err);
-            trendingGrid.innerHTML = "<p style=\"color:#9c98ab;text-align:center;\">Couldn''t load trending movies right now.</p>";
+            trendingGrid.innerHTML = '<p style="color:#94a3b8;text-align:center;grid-column:1/-1;padding:40px;">Couldn\'t load trending movies right now.</p>';
         });
 }
 
 function renderTrending(movies) {
     if (!movies.length) {
-        trendingGrid.innerHTML = "<p style=\"color:#9c98ab;text-align:center;\">No trending movies found.</p>";
+        trendingGrid.innerHTML = '<p style="color:#94a3b8;text-align:center;grid-column:1/-1;padding:40px;">No trending movies found.</p>';
         return;
     }
 
     trendingGrid.innerHTML = movies.map(movie => {
         const posterUrl = movie.poster_path
-            ? `https://image.tmdb.org/t/p/w300${movie.poster_path}`
-            : "https://via.placeholder.com/300x450/17141f/9c98ab?text=No+Poster";
+            ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
+            : "https://via.placeholder.com/300x450/151322/94a3b8?text=No+Poster";
         const rating = movie.vote_average ? movie.vote_average.toFixed(1) : "N/A";
         const genreLabel = movie.genre_ids && movie.genre_ids.length
             ? genreIdToName(movie.genre_ids[0])
-            : "Movie";
+            : "Feature";
 
         return `
-            <div class="movie-card">
-                <img src="${posterUrl}" alt="${escapeHtml(movie.title)}">
+            <div class="movie-card" onclick="window.location.href='details.html?id=${movie.id}'">
+                <img src="${posterUrl}" alt="${escapeHtml(movie.title)}" loading="lazy">
                 <div class="movie-info">
                     <h3>${escapeHtml(movie.title)}</h3>
-                    <span>${rating} - ${genreLabel}</span>
-                    <a href="details.html?id=${movie.id}"><button>View Details</button></a>
+                    <span><i class="fa-solid fa-star" style="color: #f59e0b; font-size: 11px;"></i> ${rating} • ${genreLabel}</span>
+                    <a href="details.html?id=${movie.id}" onclick="event.stopPropagation();"><button type="button">View Details</button></a>
                 </div>
             </div>
         `;
@@ -53,7 +53,7 @@ function genreIdToName(id) {
         9648: "Mystery", 10749: "Romance", 878: "Sci-Fi", 53: "Thriller",
         10752: "War", 37: "Western"
     };
-    return genreMap[id] || "Movie";
+    return genreMap[id] || "Feature";
 }
 
 function escapeHtml(str) {

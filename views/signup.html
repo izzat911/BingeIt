@@ -3,50 +3,50 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>BingeIt - Sign Up</title>
 
-   <link rel="stylesheet" href="../public/css/auth.css">
-</head>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
 
+    <link rel="stylesheet" href="../public/css/auth.css">
+</head>
 <body>
 
     <div class="auth-page">
 
         <!-- Logo -->
-        <div class="auth-logo">
-            <span class="logo-icon">🎥</span>
-            <span>Binge<span>It</span></span>
-        </div>
+        <a href="index.html" class="auth-logo">
+            <img src="../public/images/camera-svgrepo-com.svg.png" alt="BingeIt Logo">
+            <span class="brand-text">Binge<span>It</span></span>
+        </a>
 
         <!-- Sign Up Card -->
         <div class="auth-card">
-
-            <h1>Create Your Account</h1>
-
-            <p class="auth-subtitle">
-                Start building your perfect watchlist.
-            </p>
+            <h1>Create Account</h1>
+            <p class="auth-subtitle">Join BingeIt and start discovering movies tailored for you.</p>
 
             <form>
-
                 <div class="input-group">
-                    <label for="name">Name</label>
+                    <label for="name">Full Name</label>
                     <input
                         type="text"
                         id="name"
-                        placeholder="Enter your name"
+                        placeholder="John Doe"
                         required
+                        autocomplete="name"
                     >
                 </div>
 
                 <div class="input-group">
-                    <label for="email">Email</label>
+                    <label for="email">Email Address</label>
                     <input
                         type="email"
                         id="email"
-                        placeholder="Enter your email"
+                        placeholder="you@example.com"
                         required
+                        autocomplete="email"
                     >
                 </div>
 
@@ -55,8 +55,9 @@
                     <input
                         type="password"
                         id="password"
-                        placeholder="Create a password"
+                        placeholder="Create a strong password"
                         required
+                        autocomplete="new-password"
                     >
                 </div>
 
@@ -67,22 +68,19 @@
                         id="confirm-password"
                         placeholder="Confirm your password"
                         required
+                        autocomplete="new-password"
                     >
                 </div>
 
                 <button type="submit" class="auth-button">
-                    Create Account
+                    Get Started
                 </button>
-
             </form>
-
-          
 
             <p class="switch-page">
                 Already have an account?
-                <a href="login.html">Login</a>
+                <a href="login.html">Sign In</a>
             </p>
-
         </div>
 
         <p class="auth-footer">
@@ -90,6 +88,7 @@
         </p>
 
     </div>
-<script src="../public/js/auth.js"></script>
+
+    <script src="../public/js/auth.js"></script>
 </body>
 </html>

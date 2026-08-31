@@ -1,11 +1,13 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BingeIt</title>
+    <title>BingeIt - AI Powered Movie Discovery</title>
 
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css">
     <link rel="stylesheet" href="../public/css/style.css">
 </head>
@@ -13,33 +15,33 @@
 
     <header>
         <nav class="navbar">
-            <div class="logo">
+            <a href="index.html" class="logo">
                 <img src="../public/images/camera-svgrepo-com.svg.png" alt="BingeIt Logo">
                 <h2>Binge<span>It</span></h2>
-            </div>
+            </a>
 
             <ul class="nav-links">
-                <li><a href="#">Home</a></li>
+                <li><a href="index.html" class="active">Home</a></li>
                 <li><a href="discover.html">Discover</a></li>
-                <li><a href="ai.html">AI</a></li>
-                <a href="login.html" class="login-btn" id="login-nav-btn">Login</a>
+                <li><a href="ai.html">AI Matcher</a></li>
+                <li><a href="login.html" class="login-btn" id="login-nav-btn">Login</a></li>
             </ul>
         </nav>
     </header>
 
     <section class="hero">
         <div class="hero-content">
-            <span class="badge">✨AI Powered Movie Discovery</span>
+            <span class="badge"><i class="fa-solid fa-wand-magic-sparkles"></i> AI Powered Movie Discovery</span>
 
             <h1>Find Your <span>Next Obsession</span></h1>
 
-            <p>Describe the kind of movie you're looking for, and let AI recommend the perfect watch based on your mood.</p>
+            <p>Describe your vibe, era, or storyline, and let our cinematic AI recommend the perfect watch curated just for your mood.</p>
 
             <div class="search-box">
-                <input type="text" placeholder="Describe the movie you want to watch...">
-                <button>
+                <input type="text" placeholder="e.g. Gritty 90s detective thriller with plot twists...">
+                <button type="button">
                     <i class="fa-solid fa-wand-magic-sparkles"></i>
-                    Ask AI
+                    <span>Ask AI</span>
                 </button>
             </div>
         </div>
@@ -50,8 +52,8 @@
 
     <section class="trending">
         <div class="section-title">
-            <h2>Trending Movies</h2>
-            <p>Discover what's popular around the world today.</p>
+            <h2>Trending Right Now</h2>
+            <p>Explore today's most popular and critically acclaimed films worldwide.</p>
         </div>
 
         <div class="movies-grid" id="trending-grid">
@@ -63,21 +65,21 @@
             <div class="footer-logo">
                 <img src="../public/images/camera-svgrepo-com.svg.png" alt="BingeIt Logo">
                 <h2>Binge<span>It</span></h2>
-
-                <p class="footer-tagline">Find your next obsession.</p>
-                <p class="footer-description">AI-powered movie recommendations tailored to your taste.</p>
             </div>
+            <p class="footer-tagline">Lights Off. Popcorn Ready. Let's Binge.</p>
+            <p class="footer-description">AI-powered movie recommendations crafted to help you discover cinematic masterworks.</p>
 
             <div class="footer-links">
-                <a href="#">Lightsoff.</a>
-                <a href="#">Popcorn ready.</a>
-                <a href="#">Let`s Bingeit.</a>
+                <a href="index.html">Home</a>
+                <a href="discover.html">Discover Movies</a>
+                <a href="ai.html">AI Recommendations</a>
+                <a href="login.html">Account</a>
             </div>
 
             <div class="footer-divider"></div>
 
             <div class="footer-bottom">
-                <p>Powered by AI. Inspired by Cinema.</p>
+                <p>Powered by AI & TMDB. Inspired by Cinema.</p>
                 <span>&copy; 2026 BingeIt. All Rights Reserved.</span>
             </div>
         </div>
