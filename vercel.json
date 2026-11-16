@@ -1,5 +1,17 @@
 {
+  "functions": {
+    "api/index.js": {
+      "includeFiles": [
+        "views/**",
+        "public/**"
+      ]
+    }
+  },
   "rewrites": [
+    {
+      "source": "/public/(.*)",
+      "destination": "/$1"
+    },
     {
       "source": "/(.*)",
       "destination": "/api/index"

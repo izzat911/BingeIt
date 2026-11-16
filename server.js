@@ -22,10 +22,12 @@ app.set("trust proxy", 1);
 
 app.use(express.json());
 
+const isServerless = Boolean(process.env.VERCEL || process.env.SERVERLESS);
+
 const sessionStore = new MySQLStore({
-    clearExpired: true,
-    checkExpirationInterval: 900000,
-    createDatabaseTable: true,
+    clearExpired: !isServerless,
+    checkExpirationInterval: isServerless ? 0 : 900000,
+    createDatabaseTable: !isServerless,
 }, pool);
 
 app.use(session({
@@ -36,25 +38,44 @@ app.use(session({
     cookie: { maxAge: 1000 * 60 * 60 * 24 * 7, secure: process.env.NODE_ENV === "production", sameSite: "lax" } 
 }));
 
-app.use("/public", express.static(path.join(__dirname, "public")));
+const viewsDir = path.join(process.cwd(), "views");
+const publicDir = path.join(process.cwd(), "public");
+
+app.use("/public", express.static(publicDir));
+app.use(express.static(publicDir));
 
 function requireAuthPage(req, res, next) {
-    if (req.session.userId) return next();
+    if (req.session && req.session.userId) return next();
     res.redirect("/login.html");
 }
 
 function requireAuthApi(req, res, next) {
-    if (req.session.userId) return next();
+    if (req.session && req.session.userId) return next();
     res.status(401).json({ error: "You must be logged in." });
 }
 
-app.get(["/login.html", "/signup.html"], (req, res) => {
-    res.sendFile(path.join(__dirname, "views", req.path));
+app.get(["/login", "/login.html"], (req, res) => {
+    res.sendFile(path.join(viewsDir, "login.html"));
 });
 
-app.get(["/", "/index.html", "/discover.html", "/ai.html", "/details.html"], requireAuthPage, (req, res) => {
-    const page = req.path === "/" ? "index.html" : req.path.slice(1);
-    res.sendFile(path.join(__dirname, "views", page));
+app.get(["/signup", "/signup.html"], (req, res) => {
+    res.sendFile(path.join(viewsDir, "signup.html"));
+});
+
+app.get(["/", "/index", "/index.html"], requireAuthPage, (req, res) => {
+    res.sendFile(path.join(viewsDir, "index.html"));
+});
+
+app.get(["/discover", "/discover.html"], requireAuthPage, (req, res) => {
+    res.sendFile(path.join(viewsDir, "discover.html"));
+});
+
+app.get(["/ai", "/ai.html"], requireAuthPage, (req, res) => {
+    res.sendFile(path.join(viewsDir, "ai.html"));
+});
+
+app.get(["/details", "/details.html"], requireAuthPage, (req, res) => {
+    res.sendFile(path.join(viewsDir, "details.html"));
 });
 
 app.post("/api/signup", async (req, res) => {
@@ -674,7 +695,7 @@ Respond ONLY with a JSON object in this exact format:
 });
 
 const PORT = process.env.PORT || 3000;
-if (process.env.NODE_ENV !== "test" && !process.env.SERVERLESS) {
+if (process.env.NODE_ENV !== "test" && !process.env.SERVERLESS && !process.env.VERCEL) {
     app.listen(PORT, "0.0.0.0", () => {
         console.log(`Server running on port ${PORT}`);
     });
